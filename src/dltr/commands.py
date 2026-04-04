@@ -50,6 +50,7 @@ from dltr.models.recognition.refinement import (
     should_apply_second_pass,
 )
 from dltr.models.recognition.trainer import train_crnn_recognizer
+from dltr.pipeline.end_to_end import run_end_to_end_pipeline
 from dltr.project import ProjectPaths, ensure_runtime_dirs
 from dltr.semantic import SemanticPrediction, extract_semantic_slots, generate_semantic_report
 from dltr.semantic.classes import SEMANTIC_CLASSES, validate_semantic_class
@@ -483,6 +484,30 @@ def cmd_evaluate_semantic(args: argparse.Namespace) -> int:
 
 
 def cmd_evaluate_end2end(args: argparse.Namespace) -> int:
+    if args.image:
+        if not args.detector_checkpoint or not args.recognizer_checkpoint:
+            raise ValueError(
+                "Image mode requires --detector-checkpoint and --recognizer-checkpoint"
+            )
+        artifacts = run_end_to_end_pipeline(
+            image_path=_resolve_existing_path_arg(args.image),
+            output_dir=_resolve_output_path(
+                args.output_dir,
+                ProjectPaths.from_root().reports / "eval",
+            ),
+            detector_checkpoint=_resolve_existing_path_arg(args.detector_checkpoint),
+            recognizer_checkpoint=_resolve_existing_path_arg(args.recognizer_checkpoint),
+            detector_threshold=args.detector_threshold,
+            min_area=args.min_area,
+        )
+        print(f"json={artifacts.json_path}")
+        print(f"markdown={artifacts.markdown_path}")
+        print(f"preview={artifacts.preview_image_path}")
+        return 0
+
+    if args.text is None or args.confidence is None:
+        raise ValueError("Text mode requires --text and --confidence")
+
     paths = ensure_runtime_dirs()
     policy = _load_second_pass_policy(args.recognition_config)
     quality = QualitySignals(
