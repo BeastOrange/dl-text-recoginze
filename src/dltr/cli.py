@@ -8,6 +8,7 @@ from dltr.commands import (
     cmd_data_build_rec_lmdb,
     cmd_data_prepare_detection,
     cmd_data_prepare_recognition,
+    cmd_data_prepare_recognition_crops,
     cmd_data_stats,
     cmd_data_validate,
     cmd_demo,
@@ -61,6 +62,15 @@ def build_parser() -> argparse.ArgumentParser:
     data_prepare.add_argument("--seed", default=42, type=int)
     data_prepare.add_argument("--min-frequency", default=1, type=int)
     data_prepare.set_defaults(handler=cmd_data_prepare_recognition)
+    data_crop_prepare = data_sub.add_parser("prepare-recognition-crops")
+    data_crop_prepare.add_argument("--detection-split-dir")
+    data_crop_prepare.add_argument("--crop-output-dir")
+    data_crop_prepare.add_argument("--recognition-split-dir")
+    data_crop_prepare.add_argument("--combined-output")
+    data_crop_prepare.add_argument("--charset-output")
+    data_crop_prepare.add_argument("--min-frequency", default=1, type=int)
+    data_crop_prepare.add_argument("--max-samples", type=int)
+    data_crop_prepare.set_defaults(handler=cmd_data_prepare_recognition_crops)
     data_prepare_detection = data_sub.add_parser("prepare-detection")
     data_prepare_detection.add_argument("--config", default="configs/data/datasets.example.yaml")
     data_prepare_detection.add_argument("--datasets", nargs="+", required=True)

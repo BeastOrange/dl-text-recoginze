@@ -14,6 +14,10 @@ from dltr.data.preparation import (
     combine_recognition_manifests,
     split_manifest,
 )
+from dltr.data.recognition_crops import (
+    extract_recognition_crops_from_detection_manifest,
+    should_keep_recognition_text,
+)
 from dltr.data.reporting import write_eda_markdown_report
 from dltr.data.validation import validate_dataset_paths
 
@@ -26,8 +30,10 @@ __all__ = [
     "combine_detection_manifests",
     "combine_recognition_manifests",
     "collect_inventories",
+    "extract_recognition_crops_from_detection_manifest",
     "load_data_config",
     "scan_dataset_inventory",
+    "should_keep_recognition_text",
     "split_detection_manifest",
     "split_manifest",
     "validate_dataset_paths",

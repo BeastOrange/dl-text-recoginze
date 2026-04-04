@@ -19,6 +19,7 @@ from dltr.data import (
     collect_inventories,
     combine_detection_manifests,
     combine_recognition_manifests,
+    extract_recognition_crops_from_detection_manifest,
     load_data_config,
     split_detection_manifest,
     split_manifest,
@@ -231,6 +232,78 @@ def cmd_data_prepare_recognition(args: argparse.Namespace) -> int:
     print(f"combined_manifest={combined_summary.output_path}")
     print(f"charset={charset_summary.output_path}")
     print(f"split_dir={split_summary.output_dir}")
+    print(f"summary={summary_path}")
+    return 0
+
+
+def cmd_data_prepare_recognition_crops(args: argparse.Namespace) -> int:
+    paths = ensure_runtime_dirs()
+    source_dir = _resolve_output_path(
+        args.detection_split_dir,
+        paths.data_processed / "detection_splits",
+    )
+    crop_root = _resolve_output_path(
+        args.crop_output_dir,
+        paths.data_processed / "recognition_crops",
+    )
+    split_root = _resolve_output_path(
+        args.recognition_split_dir,
+        paths.data_processed / "recognition_splits",
+    )
+    split_root.mkdir(parents=True, exist_ok=True)
+
+    summaries = []
+    split_manifests: list[Path] = []
+    for split_name in ("train", "val", "test"):
+        detection_manifest = source_dir / f"{split_name}.jsonl"
+        if not detection_manifest.exists():
+            raise FileNotFoundError(f"Detection split manifest not found: {detection_manifest}")
+        output_manifest = split_root / f"{split_name}.jsonl"
+        summary = extract_recognition_crops_from_detection_manifest(
+            split_name=split_name,
+            detection_manifest_path=detection_manifest,
+            crop_output_dir=crop_root / split_name,
+            output_manifest_path=output_manifest,
+            max_samples=args.max_samples,
+        )
+        summaries.append(summary)
+        split_manifests.append(output_manifest)
+
+    combined_path = _resolve_output_path(
+        args.combined_output,
+        paths.data_processed / "recognition_combined.jsonl",
+    )
+    combine_recognition_manifests(split_manifests, combined_path)
+    charset_path = _resolve_output_path(
+        args.charset_output,
+        paths.data_processed / "charset_zh_mixed.txt",
+    )
+    build_charset_from_manifest(combined_path, charset_path, min_frequency=args.min_frequency)
+
+    summary_path = paths.data_processed / "recognition_crop_preparation_summary.md"
+    summary_path.write_text(
+        "\n".join(
+            [
+                "# Recognition Crop Preparation Summary",
+                "",
+                f"- Combined Manifest: `{combined_path}`",
+                f"- Charset File: `{charset_path}`",
+                "",
+            ]
+            + [
+                (
+                    f"- `{summary.split_name}`: rows=`{summary.source_rows}`, "
+                    f"crops=`{summary.emitted_crops}`, skipped=`{summary.skipped_instances}`"
+                )
+                for summary in summaries
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    print(f"combined_manifest={combined_path}")
+    print(f"charset={charset_path}")
+    print(f"split_dir={split_root}")
     print(f"summary={summary_path}")
     return 0
 
