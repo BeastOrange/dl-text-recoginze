@@ -6,6 +6,8 @@ from collections.abc import Callable
 from dltr import __version__
 from dltr.commands import (
     cmd_data_build_rec_lmdb,
+    cmd_data_prepare_detection,
+    cmd_data_prepare_recognition,
     cmd_data_stats,
     cmd_data_validate,
     cmd_demo,
@@ -48,6 +50,26 @@ def build_parser() -> argparse.ArgumentParser:
     data_manifest.add_argument("--dataset", required=True)
     data_manifest.add_argument("--output")
     data_manifest.set_defaults(handler=cmd_data_build_rec_lmdb)
+    data_prepare = data_sub.add_parser("prepare-recognition")
+    data_prepare.add_argument("--config", default="configs/data/datasets.example.yaml")
+    data_prepare.add_argument("--datasets", nargs="+", required=True)
+    data_prepare.add_argument("--combined-output")
+    data_prepare.add_argument("--charset-output")
+    data_prepare.add_argument("--split-output-dir")
+    data_prepare.add_argument("--train-ratio", default=0.8, type=float)
+    data_prepare.add_argument("--val-ratio", default=0.1, type=float)
+    data_prepare.add_argument("--seed", default=42, type=int)
+    data_prepare.add_argument("--min-frequency", default=1, type=int)
+    data_prepare.set_defaults(handler=cmd_data_prepare_recognition)
+    data_prepare_detection = data_sub.add_parser("prepare-detection")
+    data_prepare_detection.add_argument("--config", default="configs/data/datasets.example.yaml")
+    data_prepare_detection.add_argument("--datasets", nargs="+", required=True)
+    data_prepare_detection.add_argument("--combined-output")
+    data_prepare_detection.add_argument("--split-output-dir")
+    data_prepare_detection.add_argument("--train-ratio", default=0.8, type=float)
+    data_prepare_detection.add_argument("--val-ratio", default=0.1, type=float)
+    data_prepare_detection.add_argument("--seed", default=42, type=int)
+    data_prepare_detection.set_defaults(handler=cmd_data_prepare_detection)
 
     train = top.add_parser("train", help="Training commands.")
     train_sub = train.add_subparsers(dest="command")

@@ -1,6 +1,6 @@
 experiment_name: crnn_baseline_cn_scene
 model_name: crnn
-dataset_manifest: data/processed/recognition_manifest_train.jsonl
+dataset_manifest: data/processed/recognition_splits/train.jsonl
 charset_file: data/processed/charset_zh_mixed.txt
 output_dir: artifacts/checkpoints/recognition/crnn_baseline
 epochs: 80

@@ -13,9 +13,15 @@ import yaml
 
 from dltr.data import (
     analyze_hardcase_metadata,
+    build_charset_from_manifest,
+    build_detection_manifest,
     build_recognition_manifest,
     collect_inventories,
+    combine_detection_manifests,
+    combine_recognition_manifests,
     load_data_config,
+    split_detection_manifest,
+    split_manifest,
     validate_dataset_paths,
     write_eda_markdown_report,
 )
@@ -140,6 +146,154 @@ def cmd_data_build_rec_lmdb(args: argparse.Namespace) -> int:
         f"emitted={result.emitted_rows} skipped={result.skipped_without_label}"
     )
     print(f"output={result.output_path}")
+    return 0
+
+
+def cmd_data_prepare_recognition(args: argparse.Namespace) -> int:
+    paths = ensure_runtime_dirs()
+    config = _load_data_config_arg(args.config, paths)
+    selected_specs = [_find_dataset_spec(config.datasets, name) for name in args.datasets]
+
+    manifest_paths: list[Path] = []
+    manifest_dir = paths.data_processed / "manifests"
+    manifest_dir.mkdir(parents=True, exist_ok=True)
+
+    for spec in selected_specs:
+        manifest_path = manifest_dir / f"{spec.name}.jsonl"
+        build_recognition_manifest(
+            dataset_name=spec.name,
+            dataset_root=paths.root / spec.relative_path,
+            output_path=manifest_path,
+            image_extensions=spec.image_extensions,
+            label_extensions=spec.label_extensions,
+        )
+        manifest_paths.append(manifest_path)
+
+    combined_path = _resolve_output_path(
+        args.combined_output,
+        paths.data_processed / "recognition_combined.jsonl",
+    )
+    combined_summary = combine_recognition_manifests(
+        manifest_paths=manifest_paths,
+        output_path=combined_path,
+    )
+
+    charset_path = _resolve_output_path(
+        args.charset_output,
+        paths.data_processed / "charset_zh_mixed.txt",
+    )
+    charset_summary = build_charset_from_manifest(
+        combined_path,
+        charset_path,
+        min_frequency=args.min_frequency,
+    )
+
+    split_dir = _resolve_output_path(
+        args.split_output_dir,
+        paths.data_processed / "recognition_splits",
+    )
+    split_summary = split_manifest(
+        combined_path,
+        split_dir,
+        train_ratio=args.train_ratio,
+        val_ratio=args.val_ratio,
+        seed=args.seed,
+    )
+
+    summary_path = paths.data_processed / "recognition_preparation_summary.md"
+    summary_path.write_text(
+        "\n".join(
+            [
+                "# Recognition Preparation Summary",
+                "",
+                f"- Combined Manifest: `{combined_summary.output_path}`",
+                f"- Total Rows: `{combined_summary.total_rows}`",
+                f"- Charset File: `{charset_summary.output_path}`",
+                f"- Unique Characters: `{charset_summary.unique_characters}`",
+                f"- Train Rows: `{split_summary.train_rows}`",
+                f"- Val Rows: `{split_summary.val_rows}`",
+                f"- Test Rows: `{split_summary.test_rows}`",
+                "",
+                "## Dataset Counts",
+                "",
+            ]
+            + [
+                f"- `{dataset}`: `{count}`"
+                for dataset, count in sorted(combined_summary.dataset_counts.items())
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    print(f"combined_manifest={combined_summary.output_path}")
+    print(f"charset={charset_summary.output_path}")
+    print(f"split_dir={split_summary.output_dir}")
+    print(f"summary={summary_path}")
+    return 0
+
+
+def cmd_data_prepare_detection(args: argparse.Namespace) -> int:
+    paths = ensure_runtime_dirs()
+    config = _load_data_config_arg(args.config, paths)
+    selected_specs = [_find_dataset_spec(config.datasets, name) for name in args.datasets]
+
+    manifest_paths: list[Path] = []
+    manifest_dir = paths.data_processed / "detection_manifests"
+    manifest_dir.mkdir(parents=True, exist_ok=True)
+    for spec in selected_specs:
+        manifest_path = manifest_dir / f"{spec.name}.jsonl"
+        build_detection_manifest(
+            dataset_name=spec.name,
+            dataset_root=paths.root / spec.relative_path,
+            output_path=manifest_path,
+            image_extensions=spec.image_extensions,
+            label_extensions=spec.label_extensions,
+        )
+        manifest_paths.append(manifest_path)
+
+    combined_path = _resolve_output_path(
+        args.combined_output,
+        paths.data_processed / "detection_combined.jsonl",
+    )
+    dataset_counts = combine_detection_manifests(
+        manifest_paths=manifest_paths,
+        output_path=combined_path,
+    )
+    split_dir = _resolve_output_path(
+        args.split_output_dir,
+        paths.data_processed / "detection_splits",
+    )
+    split_summary = split_detection_manifest(
+        combined_path,
+        split_dir,
+        train_ratio=args.train_ratio,
+        val_ratio=args.val_ratio,
+        seed=args.seed,
+    )
+
+    summary_path = paths.data_processed / "detection_preparation_summary.md"
+    summary_path.write_text(
+        "\n".join(
+            [
+                "# Detection Preparation Summary",
+                "",
+                f"- Combined Manifest: `{combined_path}`",
+                f"- Train Rows: `{split_summary.train_rows}`",
+                f"- Val Rows: `{split_summary.val_rows}`",
+                f"- Test Rows: `{split_summary.test_rows}`",
+                "",
+                "## Dataset Counts",
+                "",
+            ]
+            + [f"- `{dataset}`: `{count}`" for dataset, count in sorted(dataset_counts.items())]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    print(f"combined_manifest={combined_path}")
+    print(f"split_dir={split_summary.output_dir}")
+    print(f"summary={summary_path}")
     return 0
 
 
