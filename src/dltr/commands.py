@@ -389,6 +389,8 @@ def cmd_train_detector(args: argparse.Namespace) -> int:
         return 1
     print(f"run_dir={result.context.run_dir}")
     print(f"checkpoint={result.checkpoint_path}")
+    print(f"best_checkpoint={result.best_checkpoint_path}")
+    print(f"history={result.history_path}")
     print(f"summary={result.summary_path}")
     print(f"report={result.report_paths['markdown']}")
     return 0
@@ -413,6 +415,8 @@ def cmd_train_recognizer(args: argparse.Namespace) -> int:
         return 1
     print(f"run_dir={result.run_dir}")
     print(f"checkpoint={result.checkpoint_path}")
+    print(f"best_checkpoint={result.best_checkpoint_path}")
+    print(f"history={result.history_path}")
     print(f"summary={result.summary_path}")
     print(f"report={result.report_path}")
     return 0

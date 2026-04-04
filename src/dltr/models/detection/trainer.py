@@ -24,6 +24,9 @@ from dltr.project import ProjectPaths
 class DetectionTrainingResult:
     context: DetectionRunContext
     checkpoint_path: Path
+    best_checkpoint_path: Path
+    history_path: Path
+    history_markdown_path: Path
     summary_path: Path
     report_paths: dict[str, Path]
 
@@ -85,9 +88,17 @@ def train_dbnet_detector(
     model = _build_dbnet_tiny(nn).to(device)
     optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
     criterion = nn.BCEWithLogitsLoss()
+    best_checkpoint_path = context.checkpoints_dir / "best.pt"
+    history_path = context.run_dir / "training_history.jsonl"
+    history_markdown_path = context.run_dir / "training_history.md"
+    best_hmean = float("-inf")
+    metrics = {"precision": 0.0, "recall": 0.0, "hmean": 0.0}
+    history: list[dict[str, float | int]] = []
 
-    for _ in range(config.epochs):
+    for epoch in range(1, config.epochs + 1):
         model.train()
+        train_loss_total = 0.0
+        train_batches = 0
         for images, masks in train_loader:
             images = images.to(device)
             masks = masks.to(device)
@@ -96,8 +107,31 @@ def train_dbnet_detector(
             loss = criterion(logits, masks)
             loss.backward()
             optimizer.step()
+            train_loss_total += float(loss.item())
+            train_batches += 1
 
-    metrics = _evaluate_detector(model, val_loader, device, torch)
+        metrics = _evaluate_detector(model, val_loader, device, torch)
+        train_loss = train_loss_total / max(train_batches, 1)
+        history.append(
+            {
+                "epoch": epoch,
+                "train_loss": train_loss,
+                "val_precision": metrics["precision"],
+                "val_recall": metrics["recall"],
+                "val_hmean": metrics["hmean"],
+            }
+        )
+        if metrics["hmean"] >= best_hmean:
+            best_hmean = metrics["hmean"]
+            torch.save(
+                {
+                    "model_state_dict": model.state_dict(),
+                    "config": asdict(config),
+                    "metrics": metrics,
+                    "epoch": epoch,
+                },
+                best_checkpoint_path,
+            )
     report_paths = write_evaluation_summary(
         context,
         split="val",
@@ -117,10 +151,20 @@ def train_dbnet_detector(
         checkpoint_path,
     )
     summary_path = context.run_dir / "training_summary.json"
+    history_path.write_text(
+        "\n".join(json.dumps(record, ensure_ascii=False) for record in history) + "\n",
+        encoding="utf-8",
+    )
+    history_markdown_path.write_text(
+        _build_history_markdown(config.experiment_name, history),
+        encoding="utf-8",
+    )
     summary_path.write_text(
         json.dumps(
             {
                 "checkpoint_path": str(checkpoint_path),
+                "best_checkpoint_path": str(best_checkpoint_path),
+                "history_path": str(history_path),
                 "report_paths": {key: str(value) for key, value in report_paths.items()},
                 "metrics": metrics,
             },
@@ -132,6 +176,9 @@ def train_dbnet_detector(
     return DetectionTrainingResult(
         context=context,
         checkpoint_path=checkpoint_path,
+        best_checkpoint_path=best_checkpoint_path,
+        history_path=history_path,
+        history_markdown_path=history_markdown_path,
         summary_path=summary_path,
         report_paths=report_paths,
     )
@@ -256,3 +303,22 @@ def _scale_polygon(
         else:
             scaled.append(int(round(value * height_scale)))
     return scaled
+
+
+def _build_history_markdown(
+    experiment_name: str,
+    history: list[dict[str, float | int]],
+) -> str:
+    lines = [
+        f"# Training History: {experiment_name}",
+        "",
+        "| Epoch | Train Loss | Val Precision | Val Recall | Val Hmean |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for record in history:
+        lines.append(
+            f"| {record['epoch']} | {record['train_loss']:.6f} | "
+            f"{record['val_precision']:.6f} | {record['val_recall']:.6f} | "
+            f"{record['val_hmean']:.6f} |"
+        )
+    return "\n".join(lines) + "\n"

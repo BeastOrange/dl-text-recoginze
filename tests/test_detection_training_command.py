@@ -86,6 +86,15 @@ def test_train_detector_runs_smoke(tmp_path, monkeypatch) -> None:
     exit_code = main(["train", "detector", "--config", str(config_path), "--run-id", "cli-smoke"])
 
     assert exit_code == 0
+    assert (
+        tmp_path
+        / "artifacts"
+        / "detection"
+        / "det_cmd_smoke"
+        / "cli-smoke"
+        / "checkpoints"
+        / "best.pt"
+    ).exists()
 
 
 def _write_box_image(path) -> None:

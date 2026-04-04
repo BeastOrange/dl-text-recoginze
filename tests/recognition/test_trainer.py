@@ -84,9 +84,15 @@ def test_train_crnn_recognizer_runs_smoke_epoch(tmp_path: Path) -> None:
     )
 
     assert result.checkpoint_path.exists()
+    assert result.best_checkpoint_path.exists()
+    assert result.history_path.exists()
+    assert result.history_markdown_path.exists()
     assert result.summary_path.exists()
     assert result.report_path.exists()
     assert result.metrics.samples == 2
+    history_lines = result.history_path.read_text(encoding="utf-8").splitlines()
+    assert len(history_lines) == 1
+    assert "train_loss" in history_lines[0]
 
 
 def _write_text_image(path: Path, text: str) -> None:

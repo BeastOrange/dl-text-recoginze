@@ -129,6 +129,15 @@ def test_train_recognizer_crnn_runs_smoke(tmp_path, monkeypatch) -> None:
         / "cli-smoke"
         / "last.pt"
     ).exists()
+    assert (
+        tmp_path
+        / "artifacts"
+        / "checkpoints"
+        / "recognition"
+        / "crnn_smoke_cmd"
+        / "cli-smoke"
+        / "best.pt"
+    ).exists()
 
 
 def _write_text_image(path, text: str) -> None:

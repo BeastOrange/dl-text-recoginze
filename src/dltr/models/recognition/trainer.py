@@ -25,6 +25,9 @@ from dltr.project import ProjectPaths
 class RecognitionTrainingResult:
     run_dir: Path
     checkpoint_path: Path
+    best_checkpoint_path: Path
+    history_path: Path
+    history_markdown_path: Path
     summary_path: Path
     report_path: Path
     metrics: RecognitionMetrics
@@ -64,6 +67,9 @@ def train_crnn_recognizer(
     run_dir = (project_paths.root / config.output_dir / resolved_run_id).resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_path = run_dir / "last.pt"
+    best_checkpoint_path = run_dir / "best.pt"
+    history_path = run_dir / "training_history.jsonl"
+    history_markdown_path = run_dir / "training_history.md"
 
     train_dataset = _TorchRecognitionDataset(
         train_samples,
@@ -96,9 +102,20 @@ def train_crnn_recognizer(
     model = _build_crnn_model(nn=nn, vocabulary_size=vocabulary.size).to(device)
     criterion = nn.CTCLoss(blank=vocabulary.blank_index, zero_infinity=True)
     optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
+    history: list[dict[str, float | int]] = []
+    best_word_accuracy = float("-inf")
+    metrics = RecognitionMetrics(
+        samples=1,
+        word_accuracy=0.0,
+        cer=1.0,
+        ned=1.0,
+        mean_edit_distance=1.0,
+    )
 
-    for _ in range(config.epochs):
+    for epoch in range(1, config.epochs + 1):
         model.train()
+        train_loss_total = 0.0
+        train_batches = 0
         for batch in train_loader:
             images = batch["images"].to(device)
             targets = batch["targets"].to(device)
@@ -115,19 +132,44 @@ def train_crnn_recognizer(
             loss = criterion(log_probs, targets, input_lengths, target_lengths)
             loss.backward()
             optimizer.step()
+            train_loss_total += float(loss.item())
+            train_batches += 1
 
-    started_at = time.perf_counter()
-    predictions, targets = _evaluate_ctc_model(model, val_loader, vocabulary, device, torch)
-    latency_ms = ((time.perf_counter() - started_at) / max(1, len(targets))) * 1000
-    score_summary = compute_recognition_scores(predictions, targets)
-    metrics = RecognitionMetrics(
-        samples=score_summary.samples,
-        word_accuracy=score_summary.word_accuracy,
-        cer=score_summary.cer,
-        ned=score_summary.ned,
-        mean_edit_distance=score_summary.mean_edit_distance,
-        latency_ms=latency_ms,
-    )
+        started_at = time.perf_counter()
+        predictions, targets = _evaluate_ctc_model(model, val_loader, vocabulary, device, torch)
+        latency_ms = ((time.perf_counter() - started_at) / max(1, len(targets))) * 1000
+        score_summary = compute_recognition_scores(predictions, targets)
+        metrics = RecognitionMetrics(
+            samples=score_summary.samples,
+            word_accuracy=score_summary.word_accuracy,
+            cer=score_summary.cer,
+            ned=score_summary.ned,
+            mean_edit_distance=score_summary.mean_edit_distance,
+            latency_ms=latency_ms,
+        )
+        train_loss = train_loss_total / max(train_batches, 1)
+        history.append(
+            {
+                "epoch": epoch,
+                "train_loss": train_loss,
+                "val_word_accuracy": metrics.word_accuracy,
+                "val_cer": metrics.cer,
+                "val_ned": metrics.ned,
+                "val_mean_edit_distance": metrics.mean_edit_distance,
+                "val_latency_ms": metrics.latency_ms or 0.0,
+            }
+        )
+        if metrics.word_accuracy >= best_word_accuracy:
+            best_word_accuracy = metrics.word_accuracy
+            torch.save(
+                {
+                    "model_state_dict": model.state_dict(),
+                    "config": asdict(config),
+                    "metrics": asdict(metrics),
+                    "epoch": epoch,
+                },
+                best_checkpoint_path,
+            )
     report_path = generate_recognition_evaluation_report(
         run_name=config.experiment_name,
         model_name=config.model_name,
@@ -144,11 +186,21 @@ def train_crnn_recognizer(
         checkpoint_path,
     )
     summary_path = run_dir / "training_summary.json"
+    history_path.write_text(
+        "\n".join(json.dumps(record, ensure_ascii=False) for record in history) + "\n",
+        encoding="utf-8",
+    )
+    history_markdown_path.write_text(
+        _build_history_markdown(config.experiment_name, history),
+        encoding="utf-8",
+    )
     summary_path.write_text(
         json.dumps(
             {
                 "run_id": resolved_run_id,
                 "checkpoint_path": str(checkpoint_path),
+                "best_checkpoint_path": str(best_checkpoint_path),
+                "history_path": str(history_path),
                 "report_path": str(report_path),
                 "metrics": asdict(metrics),
             },
@@ -160,6 +212,9 @@ def train_crnn_recognizer(
     return RecognitionTrainingResult(
         run_dir=run_dir,
         checkpoint_path=checkpoint_path,
+        best_checkpoint_path=best_checkpoint_path,
+        history_path=history_path,
+        history_markdown_path=history_markdown_path,
         summary_path=summary_path,
         report_path=report_path,
         metrics=metrics,
@@ -288,3 +343,22 @@ def _evaluate_ctc_model(
                 predictions.append(vocabulary.decode_greedy(indices.tolist()))
                 targets.append(target)
     return predictions, targets
+
+
+def _build_history_markdown(
+    experiment_name: str,
+    history: list[dict[str, float | int]],
+) -> str:
+    lines = [
+        f"# Training History: {experiment_name}",
+        "",
+        "| Epoch | Train Loss | Val Word Accuracy | Val CER | Val NED |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for record in history:
+        lines.append(
+            f"| {record['epoch']} | {record['train_loss']:.6f} | "
+            f"{record['val_word_accuracy']:.6f} | {record['val_cer']:.6f} | "
+            f"{record['val_ned']:.6f} |"
+        )
+    return "\n".join(lines) + "\n"
