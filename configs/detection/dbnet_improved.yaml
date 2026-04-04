@@ -1,0 +1,21 @@
+experiment_name: det_dbnet_hardcase_v1
+model_name: dbnet
+dataset_dir: data/raw/rects/images
+annotation_dir: data/raw/rects/labels
+output_root: artifacts/detection/det_dbnet_hardcase_v1
+train_split: train
+val_split: val
+image_extensions:
+  - .jpg
+  - .jpeg
+  - .png
+  - .bmp
+epochs: 140
+batch_size: 12
+learning_rate: 0.0008
+seed: 2026
+hard_case_sampling: true
+multi_scale_augmentation: true
+description: >
+  Improved DBNet scaffold config with hard-case sampling and multi-scale augmentation flags.
+  Use this to track experiment metadata before full model training is integrated.

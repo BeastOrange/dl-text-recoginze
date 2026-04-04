@@ -1,0 +1,16 @@
+experiment_name: macbert_semantic_cn_scene
+model_name: hfl/chinese-macbert-base
+label_set:
+  - shop_sign
+  - advertisement
+  - public_notice
+  - traffic_or_warning
+  - service_info
+  - other
+dataset_manifest: data/semantic/cn_scenetext_sem/train.jsonl
+validation_manifest: data/semantic/cn_scenetext_sem/val.jsonl
+output_dir: artifacts/checkpoints/semantic/macbert
+epochs: 6
+batch_size: 24
+learning_rate: 0.00002
+max_length: 256

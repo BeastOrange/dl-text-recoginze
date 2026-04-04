@@ -1,0 +1,1 @@
+"""Recognition scaffold tests."""

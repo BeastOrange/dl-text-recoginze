@@ -1,0 +1,36 @@
+datasets:
+  - name: rctw17
+    relative_path: data/raw/rctw17
+    required: false
+    image_extensions: [".jpg", ".jpeg", ".png"]
+    label_extensions: [".txt", ".json"]
+  - name: rects
+    relative_path: data/raw/rects
+    required: true
+    image_extensions: [".jpg", ".png"]
+    label_extensions: [".txt", ".json"]
+  - name: shopsign
+    relative_path: data/raw/shopsign
+    required: false
+    image_extensions: [".jpg", ".jpeg", ".png"]
+    label_extensions: [".txt", ".json"]
+  - name: ctw
+    relative_path: data/raw/ctw
+    required: false
+    image_extensions: [".jpg", ".jpeg", ".png"]
+    label_extensions: [".txt", ".json"]
+  - name: mtwi
+    relative_path: data/raw/mtwi
+    required: false
+    image_extensions: [".jpg", ".jpeg", ".png"]
+    label_extensions: [".txt", ".json"]
+  - name: ctr_benchmark_scene_lmdb
+    relative_path: data/raw/ctr_benchmark_scene_lmdb
+    required: true
+    image_extensions: [".jpg", ".jpeg", ".png"]
+    label_extensions: [".txt", ".json"]
+  - name: text_renderer_corpus
+    relative_path: data/raw/text_renderer_corpus
+    required: false
+    image_extensions: [".jpg", ".jpeg", ".png"]
+    label_extensions: [".txt", ".json"]

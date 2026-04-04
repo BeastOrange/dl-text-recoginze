@@ -1,0 +1,33 @@
+{
+  "text": "营业时间09:00-21:00",
+  "confidence": 0.52,
+  "second_pass_enabled": true,
+  "should_apply_second_pass": true,
+  "reasons": [
+    "low_confidence",
+    "high_blur"
+  ],
+  "quality": {
+    "blur_score": 0.6,
+    "contrast_score": null,
+    "aspect_ratio": null
+  },
+  "semantic_class": "other",
+  "slots": {
+    "phone": [],
+    "price": [],
+    "time": [
+      "09:00",
+      "21:00"
+    ],
+    "warning_terms": [],
+    "location_hint": [],
+    "keywords": [
+      "营业时间",
+      "09",
+      "00",
+      "21"
+    ]
+  },
+  "generated_at": "2026-04-04T13:08:15.607449+00:00"
+}

@@ -1,0 +1,12 @@
+keyword_groups:
+  small_text_like: ["small", "tiny", "micro"]
+  dense_text_like: ["dense", "crowded", "cluster"]
+  rotated_text_like: ["rotate", "tilt", "skew", "angle"]
+  vertical_text_like: ["vertical", "vert", "vtext"]
+  occluded_text_like: ["occl", "遮挡"]
+  low_quality_like: ["blur", "noise", "dark", "glare", "reflection", "lowres"]
+  artistic_text_like: ["art", "style", "handwriting"]
+
+notes:
+  - "This config documents default metadata-only hard-case heuristics."
+  - "Current implementation uses built-in defaults and can be extended later."

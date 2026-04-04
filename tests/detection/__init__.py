@@ -1,0 +1,1 @@
+"""Detection scaffold tests."""

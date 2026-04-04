@@ -1,0 +1,20 @@
+experiment_name: det_dbnet_baseline
+model_name: dbnet
+dataset_dir: data/raw/rctw17/images
+annotation_dir: data/raw/rctw17/labels
+output_root: artifacts/detection/det_dbnet_baseline
+train_split: train
+val_split: val
+image_extensions:
+  - .jpg
+  - .jpeg
+  - .png
+epochs: 120
+batch_size: 16
+learning_rate: 0.001
+seed: 42
+hard_case_sampling: false
+multi_scale_augmentation: false
+description: >
+  DBNet baseline scaffold config for Chinese scene text detection.
+  This config prepares run metadata and directory layout only.
