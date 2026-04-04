@@ -169,7 +169,9 @@ def test_demo_and_end2end_generate_outputs(tmp_path: Path, monkeypatch) -> None:
 
     assert demo_code == 0
     assert end2end_code == 0
-    assert (tmp_path / "reports" / "demo_assets" / "demo_preview_semantic_eval.md").exists()
+    assert (
+        tmp_path / "reports" / "demo_assets" / "generated" / "demo_preview_semantic_eval.md"
+    ).exists()
     assert (tmp_path / "reports" / "eval" / "end2end_preview.json").exists()
 
 

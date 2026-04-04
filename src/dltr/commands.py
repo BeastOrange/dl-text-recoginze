@@ -29,6 +29,7 @@ from dltr.data.recognition_crops import extract_recognition_crops_from_detection
 from dltr.data.reporting import write_eda_markdown_report
 from dltr.data.types import DatasetSpec
 from dltr.data.validation import validate_dataset_paths
+from dltr.demo.streamlit_app import render_streamlit_app
 from dltr.models.detection import (
     build_export_plan,
     load_detection_run_config,
@@ -628,6 +629,17 @@ def cmd_export_onnx(args: argparse.Namespace) -> int:
 
 
 def cmd_demo(args: argparse.Namespace) -> int:
+    if args.serve:
+        try:
+            render_streamlit_app()
+        except ModuleNotFoundError:
+            print(
+                "Streamlit is not installed in the current environment. "
+                "Run `uv sync --extra demo` or use `demo` without `--serve`."
+            )
+            return 1
+        return 0
+
     paths = ensure_runtime_dirs()
     prediction = SemanticPrediction(
         source_id=args.source_id,
@@ -636,17 +648,14 @@ def cmd_demo(args: argparse.Namespace) -> int:
         confidence=args.confidence,
         slots=extract_semantic_slots(args.text),
     )
-    output_dir = _resolve_output_path(args.output_dir, paths.reports / "demo_assets")
+    output_dir = _resolve_output_path(args.output_dir, paths.reports / "demo_assets" / "generated")
     report_path = generate_semantic_report(
         run_name="demo_preview",
         predictions=[prediction],
         output_dir=output_dir,
     )
     print("Demo asset generated.")
-    print(
-        "Note: Streamlit UI is planned later; this command currently generates "
-        "English demo assets."
-    )
+    print("Static demo assets generated.")
     print(f"report={report_path}")
     return 0
 

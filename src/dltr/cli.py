@@ -168,6 +168,7 @@ def build_parser() -> argparse.ArgumentParser:
     demo.add_argument("--semantic-class", default="other")
     demo.add_argument("--confidence", default=0.65, type=float)
     demo.add_argument("--output-dir")
+    demo.add_argument("--serve", action="store_true")
     demo.set_defaults(handler=cmd_demo)
 
     sync = top.add_parser("sync", help="Synchronize source code to Linux training server.")

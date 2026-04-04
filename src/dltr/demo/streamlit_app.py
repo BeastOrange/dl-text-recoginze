@@ -1,0 +1,77 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+
+def discover_report_files(reports_dir: Path) -> dict[str, list[Path]]:
+    train_dir = reports_dir / "train"
+    eval_dir = reports_dir / "eval"
+    eda_dir = reports_dir / "eda"
+    return {
+        "train_markdown": sorted(train_dir.glob("*.md")) if train_dir.exists() else [],
+        "eval_json": sorted(eval_dir.glob("*.json")) if eval_dir.exists() else [],
+        "eda_markdown": sorted(eda_dir.glob("*.md")) if eda_dir.exists() else [],
+    }
+
+
+def load_end_to_end_preview(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def render_streamlit_app() -> None:
+    import streamlit as st
+
+    root = Path.cwd()
+    reports_dir = root / "reports"
+    files = discover_report_files(reports_dir)
+
+    st.set_page_config(
+        page_title="DLTR Demo",
+        page_icon="OCR",
+        layout="wide",
+    )
+    st.title("Chinese Scene-Text Recognition Demo")
+    st.caption("Detection, recognition, semantic analysis, and experiment summaries in one place.")
+
+    left, right = st.columns((1.2, 1))
+
+    with left:
+        st.subheader("Latest End-to-End Preview")
+        preview = load_end_to_end_preview(reports_dir / "eval" / "end_to_end_preview.json")
+        if preview:
+            st.json(preview)
+        else:
+            st.info("No end-to-end preview JSON found yet.")
+
+        st.subheader("Semantic Demo")
+        demo_report = reports_dir / "demo_assets" / "demo_preview_semantic_eval.md"
+        if demo_report.exists():
+            st.markdown(demo_report.read_text(encoding="utf-8"))
+        else:
+            st.info("No demo semantic report found yet.")
+
+    with right:
+        st.subheader("Training Reports")
+        if files["train_markdown"]:
+            selected = st.selectbox(
+                "Select a training report",
+                files["train_markdown"],
+                format_func=lambda path: path.name,
+            )
+            st.markdown(selected.read_text(encoding="utf-8"))
+        else:
+            st.info("No training report markdown files found.")
+
+        st.subheader("EDA Reports")
+        if files["eda_markdown"]:
+            selected_eda = st.selectbox(
+                "Select an EDA report",
+                files["eda_markdown"],
+                format_func=lambda path: path.name,
+            )
+            st.markdown(selected_eda.read_text(encoding="utf-8"))
+        else:
+            st.info("No EDA report markdown files found.")
