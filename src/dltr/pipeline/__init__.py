@@ -1,5 +1,6 @@
 """End-to-end OCR pipeline helpers."""
 
+from dltr.pipeline.checkpoints import discover_latest_run_dir, resolve_best_checkpoint
 from dltr.pipeline.end_to_end import (
     EndToEndLineResult,
     EndToEndPipelineArtifacts,
@@ -7,7 +8,9 @@ from dltr.pipeline.end_to_end import (
 )
 
 __all__ = [
+    "discover_latest_run_dir",
     "EndToEndLineResult",
     "EndToEndPipelineArtifacts",
+    "resolve_best_checkpoint",
     "run_end_to_end_pipeline",
 ]

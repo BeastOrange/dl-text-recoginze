@@ -52,10 +52,12 @@ from dltr.models.recognition.refinement import (
     should_apply_second_pass,
 )
 from dltr.models.recognition.trainer import train_crnn_recognizer
+from dltr.pipeline.checkpoints import resolve_best_checkpoint
 from dltr.pipeline.end_to_end import run_end_to_end_pipeline
 from dltr.project import ProjectPaths, ensure_runtime_dirs
 from dltr.semantic import SemanticPrediction, extract_semantic_slots, generate_semantic_report
 from dltr.semantic.classes import SEMANTIC_CLASSES, validate_semantic_class
+from dltr.visualization.project_summary import build_project_training_summary
 from dltr.visualization.training_reports import aggregate_training_runs
 
 
@@ -442,6 +444,20 @@ def cmd_report_summarize_training(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_report_summarize_project(args: argparse.Namespace) -> int:
+    detection_json = _resolve_existing_path_arg(args.detection_summary_json)
+    recognition_json = _resolve_existing_path_arg(args.recognition_summary_json)
+    output_dir = _resolve_output_path(args.output_dir, ProjectPaths.from_root().reports / "train")
+    outputs = build_project_training_summary(
+        detection_summary_json=detection_json,
+        recognition_summary_json=recognition_json,
+        output_dir=output_dir,
+    )
+    print(f"json={outputs['json']}")
+    print(f"markdown={outputs['markdown']}")
+    return 0
+
+
 def cmd_train_semantic(args: argparse.Namespace) -> int:
     paths = ensure_runtime_dirs()
     config = _load_semantic_train_config(_resolve_existing_path_arg(args.config))
@@ -509,18 +525,22 @@ def cmd_evaluate_semantic(args: argparse.Namespace) -> int:
 
 def cmd_evaluate_end2end(args: argparse.Namespace) -> int:
     if args.image:
-        if not args.detector_checkpoint or not args.recognizer_checkpoint:
-            raise ValueError(
-                "Image mode requires --detector-checkpoint and --recognizer-checkpoint"
-            )
+        detector_checkpoint = _resolve_end_to_end_checkpoint(
+            checkpoint=args.detector_checkpoint,
+            run_dir=args.detector_run_dir,
+        )
+        recognizer_checkpoint = _resolve_end_to_end_checkpoint(
+            checkpoint=args.recognizer_checkpoint,
+            run_dir=args.recognizer_run_dir,
+        )
         artifacts = run_end_to_end_pipeline(
             image_path=_resolve_existing_path_arg(args.image),
             output_dir=_resolve_output_path(
                 args.output_dir,
                 ProjectPaths.from_root().reports / "eval",
             ),
-            detector_checkpoint=_resolve_existing_path_arg(args.detector_checkpoint),
-            recognizer_checkpoint=_resolve_existing_path_arg(args.recognizer_checkpoint),
+            detector_checkpoint=detector_checkpoint,
+            recognizer_checkpoint=recognizer_checkpoint,
             detector_threshold=args.detector_threshold,
             min_area=args.min_area,
         )
@@ -625,6 +645,18 @@ def _load_data_config_arg(config_arg: str | None, paths: ProjectPaths) -> Any:
         config_arg or paths.configs / "data" / "datasets.example.yaml",
     )
     return load_data_config(config_path)
+
+
+def _resolve_end_to_end_checkpoint(
+    *,
+    checkpoint: str | None,
+    run_dir: str | None,
+) -> Path:
+    if checkpoint:
+        return _resolve_existing_path_arg(checkpoint)
+    if run_dir:
+        return resolve_best_checkpoint(_resolve_existing_path_arg(run_dir))
+    raise ValueError("Image mode requires either a checkpoint path or a run directory")
 
 
 def _resolve_existing_path_arg(value: str | Path) -> Path:

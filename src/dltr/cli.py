@@ -17,6 +17,7 @@ from dltr.commands import (
     cmd_evaluate_recognizer,
     cmd_evaluate_semantic,
     cmd_export_onnx,
+    cmd_report_summarize_project,
     cmd_report_summarize_training,
     cmd_sync_linux,
     cmd_train_detector,
@@ -142,7 +143,9 @@ def build_parser() -> argparse.ArgumentParser:
     eval_end2end.add_argument("--output")
     eval_end2end.add_argument("--image")
     eval_end2end.add_argument("--detector-checkpoint")
+    eval_end2end.add_argument("--detector-run-dir")
     eval_end2end.add_argument("--recognizer-checkpoint")
+    eval_end2end.add_argument("--recognizer-run-dir")
     eval_end2end.add_argument("--output-dir")
     eval_end2end.add_argument("--detector-threshold", default=0.5, type=float)
     eval_end2end.add_argument("--min-area", default=32.0, type=float)
@@ -183,6 +186,11 @@ def build_parser() -> argparse.ArgumentParser:
     report_training.add_argument("--run-dirs", nargs="+", required=True)
     report_training.add_argument("--output-dir")
     report_training.set_defaults(handler=cmd_report_summarize_training)
+    report_project = report_sub.add_parser("summarize-project")
+    report_project.add_argument("--detection-summary-json", required=True)
+    report_project.add_argument("--recognition-summary-json", required=True)
+    report_project.add_argument("--output-dir")
+    report_project.set_defaults(handler=cmd_report_summarize_project)
 
     return parser
 
