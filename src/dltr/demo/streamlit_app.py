@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from dltr.demo.runtime import resolve_demo_checkpoints, run_uploaded_inference
+
 
 def discover_report_files(reports_dir: Path) -> dict[str, list[Path]]:
     train_dir = reports_dir / "train"
@@ -39,6 +41,24 @@ def render_streamlit_app() -> None:
     left, right = st.columns((1.2, 1))
 
     with left:
+        st.subheader("Run End-to-End Inference")
+        uploaded = st.file_uploader("Upload a scene image", type=["png", "jpg", "jpeg"])
+        if uploaded is not None:
+            if st.button("Run OCR Pipeline", type="primary"):
+                try:
+                    checkpoints = resolve_demo_checkpoints(project_root=root)
+                    artifacts = run_uploaded_inference(
+                        image_bytes=uploaded.getvalue(),
+                        project_root=root,
+                        detector_checkpoint=checkpoints["detector"],
+                        recognizer_checkpoint=checkpoints["recognizer"],
+                    )
+                    st.success("End-to-end inference completed.")
+                    st.image(str(artifacts.preview_image_path), caption="Pipeline Preview")
+                    st.json(load_end_to_end_preview(artifacts.json_path))
+                except FileNotFoundError as exc:
+                    st.error(str(exc))
+
         st.subheader("Latest End-to-End Preview")
         preview = load_end_to_end_preview(reports_dir / "eval" / "end_to_end_preview.json")
         if preview:
@@ -75,3 +95,7 @@ def render_streamlit_app() -> None:
             st.markdown(selected_eda.read_text(encoding="utf-8"))
         else:
             st.info("No EDA report markdown files found.")
+
+
+if __name__ == "__main__":
+    render_streamlit_app()

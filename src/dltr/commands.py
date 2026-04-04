@@ -29,7 +29,6 @@ from dltr.data.recognition_crops import extract_recognition_crops_from_detection
 from dltr.data.reporting import write_eda_markdown_report
 from dltr.data.types import DatasetSpec
 from dltr.data.validation import validate_dataset_paths
-from dltr.demo.streamlit_app import render_streamlit_app
 from dltr.models.detection import (
     build_export_plan,
     load_detection_run_config,
@@ -631,13 +630,23 @@ def cmd_export_onnx(args: argparse.Namespace) -> int:
 def cmd_demo(args: argparse.Namespace) -> int:
     if args.serve:
         try:
-            render_streamlit_app()
+            app_path = (
+                ProjectPaths.from_root().root / "src" / "dltr" / "demo" / "streamlit_app.py"
+            ).resolve()
+            subprocess.run(
+                ["streamlit", "run", str(app_path)],
+                cwd=ProjectPaths.from_root().root,
+                check=True,
+            )
         except ModuleNotFoundError:
             print(
                 "Streamlit is not installed in the current environment. "
                 "Run `uv sync --extra demo` or use `demo` without `--serve`."
             )
             return 1
+        except subprocess.CalledProcessError as exc:
+            print(f"Streamlit exited with code {exc.returncode}")
+            return exc.returncode
         return 0
 
     paths = ensure_runtime_dirs()
