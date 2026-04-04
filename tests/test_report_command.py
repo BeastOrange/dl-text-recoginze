@@ -37,3 +37,34 @@ def test_report_summarize_training_command_builds_outputs(tmp_path, monkeypatch)
 
     assert exit_code == 0
     assert (tmp_path / "reports" / "train" / "recognition_summary.json").exists()
+
+
+def test_report_build_index_and_ablation_commands_write_outputs(tmp_path, monkeypatch) -> None:
+    (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
+    train_dir = tmp_path / "reports" / "train"
+    train_dir.mkdir(parents=True, exist_ok=True)
+    (train_dir / "detection_summary.md").write_text("# detection\n", encoding="utf-8")
+    (train_dir / "recognition_summary.md").write_text("# recognition\n", encoding="utf-8")
+    (train_dir / "project_training_summary.md").write_text("# project\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    index_exit = main(["report", "build-index", "--train-reports-dir", "reports/train"])
+    ablation_exit = main(
+        [
+            "report",
+            "build-ablation-template",
+            "--task-name",
+            "recognition",
+            "--experiments",
+            "crnn_baseline",
+            "transocr_refine",
+            "transocr_refine_hardcase",
+            "--output-dir",
+            "reports/train",
+        ]
+    )
+
+    assert index_exit == 0
+    assert ablation_exit == 0
+    assert (tmp_path / "reports" / "train" / "index.md").exists()
+    assert (tmp_path / "reports" / "train" / "recognition_ablation_template.md").exists()

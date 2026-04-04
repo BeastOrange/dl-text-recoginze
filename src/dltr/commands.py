@@ -52,12 +52,13 @@ from dltr.models.recognition.refinement import (
     should_apply_second_pass,
 )
 from dltr.models.recognition.trainer import train_crnn_recognizer
-from dltr.pipeline.checkpoints import resolve_best_checkpoint
+from dltr.pipeline.checkpoints import discover_latest_run_dir, resolve_best_checkpoint
 from dltr.pipeline.end_to_end import run_end_to_end_pipeline
 from dltr.project import ProjectPaths, ensure_runtime_dirs
 from dltr.semantic import SemanticPrediction, extract_semantic_slots, generate_semantic_report
 from dltr.semantic.classes import SEMANTIC_CLASSES, validate_semantic_class
 from dltr.visualization.project_summary import build_project_training_summary
+from dltr.visualization.report_index import build_ablation_template, build_training_report_index
 from dltr.visualization.training_reports import aggregate_training_runs
 
 
@@ -458,6 +459,29 @@ def cmd_report_summarize_project(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_report_build_index(args: argparse.Namespace) -> int:
+    train_reports_dir = _resolve_existing_path_arg(args.train_reports_dir)
+    output_path = build_training_report_index(
+        train_reports_dir=train_reports_dir,
+        output_dir=_resolve_output_path(args.output_dir, train_reports_dir),
+    )
+    print(f"markdown={output_path}")
+    return 0
+
+
+def cmd_report_build_ablation_template(args: argparse.Namespace) -> int:
+    output_path = build_ablation_template(
+        output_dir=_resolve_output_path(
+            args.output_dir,
+            ProjectPaths.from_root().reports / "train",
+        ),
+        task_name=args.task_name,
+        experiments=args.experiments,
+    )
+    print(f"markdown={output_path}")
+    return 0
+
+
 def cmd_train_semantic(args: argparse.Namespace) -> int:
     paths = ensure_runtime_dirs()
     config = _load_semantic_train_config(_resolve_existing_path_arg(args.config))
@@ -526,10 +550,12 @@ def cmd_evaluate_semantic(args: argparse.Namespace) -> int:
 def cmd_evaluate_end2end(args: argparse.Namespace) -> int:
     if args.image:
         detector_checkpoint = _resolve_end_to_end_checkpoint(
+            task_name="detection",
             checkpoint=args.detector_checkpoint,
             run_dir=args.detector_run_dir,
         )
         recognizer_checkpoint = _resolve_end_to_end_checkpoint(
+            task_name="recognition",
             checkpoint=args.recognizer_checkpoint,
             run_dir=args.recognizer_run_dir,
         )
@@ -649,6 +675,7 @@ def _load_data_config_arg(config_arg: str | None, paths: ProjectPaths) -> Any:
 
 def _resolve_end_to_end_checkpoint(
     *,
+    task_name: str,
     checkpoint: str | None,
     run_dir: str | None,
 ) -> Path:
@@ -656,7 +683,16 @@ def _resolve_end_to_end_checkpoint(
         return _resolve_existing_path_arg(checkpoint)
     if run_dir:
         return resolve_best_checkpoint(_resolve_existing_path_arg(run_dir))
-    raise ValueError("Image mode requires either a checkpoint path or a run directory")
+    root = ProjectPaths.from_root().root
+    if task_name == "detection":
+        default_root = root / "artifacts" / "detection"
+    elif task_name == "recognition":
+        default_root = root / "artifacts" / "checkpoints" / "recognition"
+    else:
+        raise ValueError(f"Unsupported task name for checkpoint resolution: {task_name}")
+
+    discovered_run_dir = discover_latest_run_dir(default_root)
+    return resolve_best_checkpoint(discovered_run_dir)
 
 
 def _resolve_existing_path_arg(value: str | Path) -> Path:

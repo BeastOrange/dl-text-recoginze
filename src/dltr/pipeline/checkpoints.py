@@ -27,9 +27,8 @@ def resolve_best_checkpoint(run_dir: Path) -> Path:
 
 def discover_latest_run_dir(root_dir: Path) -> Path:
     candidates = [
-        path
-        for path in root_dir.iterdir()
-        if path.is_dir() and (path / "training_summary.json").exists()
+        summary_path.parent
+        for summary_path in root_dir.rglob("training_summary.json")
     ]
     if not candidates:
         raise FileNotFoundError(

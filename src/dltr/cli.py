@@ -17,6 +17,8 @@ from dltr.commands import (
     cmd_evaluate_recognizer,
     cmd_evaluate_semantic,
     cmd_export_onnx,
+    cmd_report_build_ablation_template,
+    cmd_report_build_index,
     cmd_report_summarize_project,
     cmd_report_summarize_training,
     cmd_sync_linux,
@@ -191,6 +193,15 @@ def build_parser() -> argparse.ArgumentParser:
     report_project.add_argument("--recognition-summary-json", required=True)
     report_project.add_argument("--output-dir")
     report_project.set_defaults(handler=cmd_report_summarize_project)
+    report_index = report_sub.add_parser("build-index")
+    report_index.add_argument("--train-reports-dir", required=True)
+    report_index.add_argument("--output-dir")
+    report_index.set_defaults(handler=cmd_report_build_index)
+    report_ablation = report_sub.add_parser("build-ablation-template")
+    report_ablation.add_argument("--task-name", required=True)
+    report_ablation.add_argument("--experiments", nargs="+", required=True)
+    report_ablation.add_argument("--output-dir")
+    report_ablation.set_defaults(handler=cmd_report_build_ablation_template)
 
     return parser
 

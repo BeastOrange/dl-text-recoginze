@@ -31,3 +31,16 @@ def test_discover_latest_run_dir_uses_summary_presence(tmp_path: Path) -> None:
     discovered = discover_latest_run_dir(tmp_path)
 
     assert discovered == newer
+
+
+def test_discover_latest_run_dir_supports_nested_run_layout(tmp_path: Path) -> None:
+    older = tmp_path / "artifacts" / "detection" / "det_a" / "20250101-000000"
+    newer = tmp_path / "artifacts" / "detection" / "det_b" / "20250103-000000"
+    older.mkdir(parents=True)
+    newer.mkdir(parents=True)
+    (older / "training_summary.json").write_text("{}", encoding="utf-8")
+    (newer / "training_summary.json").write_text("{}", encoding="utf-8")
+
+    discovered = discover_latest_run_dir(tmp_path / "artifacts")
+
+    assert discovered == newer
