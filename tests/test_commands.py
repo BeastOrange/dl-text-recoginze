@@ -63,7 +63,10 @@ def test_build_manifest_command_emits_jsonl_rows(tmp_path: Path, monkeypatch) ->
     assert payload["text"] == "测试文本"
 
 
-def test_train_recognizer_returns_nonzero_for_transocr_placeholder(tmp_path: Path, monkeypatch) -> None:
+def test_train_recognizer_returns_nonzero_for_transocr_placeholder(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
     (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
     manifest = tmp_path / "data" / "processed" / "train.jsonl"
     val_manifest = tmp_path / "data" / "processed" / "val.jsonl"
