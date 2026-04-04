@@ -15,6 +15,7 @@ The project needs executable command-line entrypoints and a realistic default da
 - `configs/data/datasets.example.yaml`
 - `PLAN.md`
 - `scripts/bootstrap_windows.ps1`
+- `scripts/run_dltr.py`
 - `tests/test_cli.py`
 - `tests/test_commands.py`
 - `tests/data/test_config.py`
@@ -24,8 +25,8 @@ The project needs executable command-line entrypoints and a realistic default da
 
 - `uv run pytest`
 - `uv run ruff check .`
-- `uv run python -m dltr demo --text "当心高压 电话13800138000"`
-- `uv run python -m dltr evaluate end2end --text "营业时间09:00-21:00" --confidence 0.52 --blur-score 0.6`
+- `uv run python scripts/run_dltr.py demo --text "当心高压 电话13800138000"`
+- `uv run python scripts/run_dltr.py evaluate end2end --text "营业时间09:00-21:00" --confidence 0.52 --blur-score 0.6`
 
 # Next
 

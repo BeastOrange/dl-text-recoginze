@@ -103,6 +103,8 @@
 - 数据清洗与格式转换
 - 分析与建模
 
+所有手动下载的数据都应物理整理到 `data/raw/` 下，不在仓库根目录长期散放。
+
 默认目录：
 
 - `data/raw/rctw17/`
@@ -287,24 +289,24 @@
 
 CLI 目标接口：
 
-- `uv run python -m dltr data validate`
-- `uv run python -m dltr data stats`
-- `uv run python -m dltr data build-rec-lmdb`
-- `uv run python -m dltr train detector`
-- `uv run python -m dltr train recognizer`
-- `uv run python -m dltr train semantic`
-- `uv run python -m dltr evaluate detector`
-- `uv run python -m dltr evaluate recognizer`
-- `uv run python -m dltr evaluate semantic`
-- `uv run python -m dltr evaluate end2end`
-- `uv run python -m dltr export onnx`
-- `uv run python -m dltr demo`
-- `uv run python -m dltr sync linux`
+- `uv run python scripts/run_dltr.py data validate`
+- `uv run python scripts/run_dltr.py data stats`
+- `uv run python scripts/run_dltr.py data build-rec-lmdb`
+- `uv run python scripts/run_dltr.py train detector`
+- `uv run python scripts/run_dltr.py train recognizer`
+- `uv run python scripts/run_dltr.py train semantic`
+- `uv run python scripts/run_dltr.py evaluate detector`
+- `uv run python scripts/run_dltr.py evaluate recognizer`
+- `uv run python scripts/run_dltr.py evaluate semantic`
+- `uv run python scripts/run_dltr.py evaluate end2end`
+- `uv run python scripts/run_dltr.py export onnx`
+- `uv run python scripts/run_dltr.py demo`
+- `uv run python scripts/run_dltr.py sync linux`
 
 说明：
 
-- 当前项目在本地 `uv` 环境中默认采用 `uv run python -m dltr ...` 作为稳定入口。
-- 若后续 `uv` 的 editable console script 行为稳定，可再恢复为 `uv run dltr ...`。
+- 当前项目在本地 `uv` 环境中默认采用 `uv run python scripts/run_dltr.py ...` 作为稳定入口。
+- 这样可以避免依赖 `uv` editable console script 的行为细节。
 
 ## 8. 跨平台策略
 

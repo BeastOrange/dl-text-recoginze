@@ -26,11 +26,12 @@ def build_recognition_manifest(
             skipped_without_label=0,
         )
 
+    source_root = _resolve_manifest_source_root(dataset_root)
     image_exts = {ext.lower() for ext in image_extensions}
     label_exts = {ext.lower() for ext in label_extensions}
     images = [
         path
-        for path in _walk_files(dataset_root)
+        for path in _walk_files(source_root)
         if path.suffix.lower() in image_exts
     ]
 
@@ -40,7 +41,7 @@ def build_recognition_manifest(
     with output_path.open("w", encoding="utf-8") as handle:
         for image_path in sorted(images):
             label_path = _find_label_path(
-                dataset_root=dataset_root,
+                dataset_root=source_root,
                 image_path=image_path,
                 label_extensions=label_exts,
             )
@@ -64,6 +65,13 @@ def build_recognition_manifest(
         emitted_rows=emitted_rows,
         skipped_without_label=skipped_without_label,
     )
+
+
+def _resolve_manifest_source_root(dataset_root: Path) -> Path:
+    rects_train_root = dataset_root / "train"
+    if rects_train_root.exists() and rects_train_root.is_dir():
+        return rects_train_root
+    return dataset_root
 def _find_label_path(
     dataset_root: Path,
     image_path: Path,
@@ -74,15 +82,21 @@ def _find_label_path(
         if candidate.exists() and candidate.is_file():
             return candidate
 
-    if image_path.parent.name == "img":
-        for label_dir_name in ("gt", "gt_unicode"):
-            label_dir = dataset_root / label_dir_name
-            if not label_dir.exists():
-                continue
-            for extension in label_extensions:
-                candidate = label_dir / f"{image_path.stem}{extension}"
-                if candidate.exists() and candidate.is_file():
-                    return candidate
+    dataset_specific = _find_dataset_specific_label_path(
+        dataset_root=dataset_root,
+        image_path=image_path,
+        label_extensions=label_extensions,
+    )
+    if dataset_specific is not None:
+        return dataset_specific
+
+    for label_dir in _rects_candidate_label_dirs(dataset_root=dataset_root, image_path=image_path):
+        if not label_dir.exists():
+            continue
+        for extension in label_extensions:
+            candidate = label_dir / f"{image_path.stem}{extension}"
+            if candidate.exists() and candidate.is_file():
+                return candidate
     return None
 
 
@@ -113,7 +127,12 @@ def _extract_text_from_txt(label_path: Path) -> str:
         parts = [segment.strip() for segment in line.split(",")]
         if not parts:
             continue
-        token = parts[-1] if len(parts) > 1 else parts[0]
+        if len(parts) >= 10 and parts[8] in {"0", "1"}:
+            token = ",".join(parts[9:]).strip()
+        elif len(parts) >= 9:
+            token = ",".join(parts[8:]).strip()
+        else:
+            token = parts[-1] if len(parts) > 1 else parts[0]
         if token:
             tokens.append(token)
     return " ".join(tokens).strip()
@@ -149,3 +168,43 @@ def _extract_text_from_json(label_path: Path) -> str:
         texts = [str(item.get("text", "")).strip() for item in payload if isinstance(item, dict)]
         return " ".join([token for token in texts if token]).strip()
     return ""
+
+
+def _find_dataset_specific_label_path(
+    dataset_root: Path,
+    image_path: Path,
+    label_extensions: set[str],
+) -> Path | None:
+    annotation_dir = dataset_root / "annotation"
+    if not annotation_dir.exists():
+        return None
+
+    stem_candidates = [image_path.stem]
+    if image_path.stem.startswith("image_"):
+        stem_candidates.append(image_path.stem.replace("image_", "gt_img_", 1))
+
+    for stem in stem_candidates:
+        for extension in label_extensions:
+            candidate = annotation_dir / f"{stem}{extension}"
+            if candidate.exists() and candidate.is_file():
+                return candidate
+    return None
+
+
+def _rects_candidate_label_dirs(dataset_root: Path, image_path: Path) -> list[Path]:
+    if image_path.parent.name != "img":
+        return []
+
+    base_dirs = [
+        image_path.parent.parent,
+        dataset_root,
+    ]
+    candidates: list[Path] = []
+    seen: set[Path] = set()
+    for base_dir in base_dirs:
+        for label_dir_name in ("gt", "gt_unicode"):
+            candidate = base_dir / label_dir_name
+            if candidate not in seen:
+                seen.add(candidate)
+                candidates.append(candidate)
+    return candidates

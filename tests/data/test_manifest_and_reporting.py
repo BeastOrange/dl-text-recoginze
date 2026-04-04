@@ -65,10 +65,10 @@ def test_write_eda_markdown_report_generates_english_sections(tmp_path: Path) ->
     assert "Hard-Case Heuristic Snapshot" in content
 
 
-def test_build_recognition_manifest_supports_rects_layout(tmp_path: Path) -> None:
+def test_build_recognition_manifest_supports_rects_nested_train_layout(tmp_path: Path) -> None:
     dataset_root = tmp_path / "rects"
-    image_path = dataset_root / "img" / "train_ReCTS_000002.jpg"
-    label_path = dataset_root / "gt" / "train_ReCTS_000002.json"
+    image_path = dataset_root / "train" / "img" / "train_ReCTS_000002.jpg"
+    label_path = dataset_root / "train" / "gt" / "train_ReCTS_000002.json"
     image_path.parent.mkdir(parents=True, exist_ok=True)
     label_path.parent.mkdir(parents=True, exist_ok=True)
     image_path.write_bytes(b"img")
@@ -86,3 +86,57 @@ def test_build_recognition_manifest_supports_rects_layout(tmp_path: Path) -> Non
     assert result.emitted_rows == 1
     payload = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
     assert payload["text"] == "营业时间"
+
+
+def test_build_recognition_manifest_prefers_rects_train_subset(tmp_path: Path) -> None:
+    dataset_root = tmp_path / "rects"
+    train_image = dataset_root / "train" / "img" / "train_ReCTS_000010.jpg"
+    train_label = dataset_root / "train" / "gt" / "train_ReCTS_000010.json"
+    test_image = dataset_root / "test_part1" / "Task1" / "img" / "test_ReCTS_000001.jpg"
+    train_image.parent.mkdir(parents=True, exist_ok=True)
+    train_label.parent.mkdir(parents=True, exist_ok=True)
+    test_image.parent.mkdir(parents=True, exist_ok=True)
+    train_image.write_bytes(b"img")
+    test_image.write_bytes(b"img")
+    train_label.write_text('{"text": "训练集文本"}', encoding="utf-8")
+
+    output_path = tmp_path / "rects_train_manifest.jsonl"
+    result = build_recognition_manifest(
+        dataset_name="rects",
+        dataset_root=dataset_root,
+        output_path=output_path,
+        image_extensions={".jpg"},
+        label_extensions={".json"},
+    )
+
+    payload = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert result.scanned_images == 1
+    assert result.emitted_rows == 1
+    assert payload["text"] == "训练集文本"
+
+
+def test_build_recognition_manifest_supports_shopsign_images_layout(tmp_path: Path) -> None:
+    dataset_root = tmp_path / "shopsign"
+    image_path = dataset_root / "images" / "image_23072.jpg"
+    label_path = dataset_root / "annotation" / "gt_img_23072.txt"
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    label_path.parent.mkdir(parents=True, exist_ok=True)
+    image_path.write_bytes(b"img")
+    label_path.write_text(
+        "1552,908,2772,716,2800,1008,1524,1193,0,SHCER\n"
+        "1728,1277,2480,1209,2484,1421,1724,1493,0,茜施尔",
+        encoding="utf-8",
+    )
+
+    output_path = tmp_path / "shopsign_manifest.jsonl"
+    result = build_recognition_manifest(
+        dataset_name="shopsign",
+        dataset_root=dataset_root,
+        output_path=output_path,
+        image_extensions={".jpg"},
+        label_extensions={".txt"},
+    )
+
+    assert result.emitted_rows == 1
+    payload = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert payload["text"] == "SHCER 茜施尔"

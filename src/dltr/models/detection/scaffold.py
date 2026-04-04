@@ -200,11 +200,11 @@ def build_export_plan(
         "exports_dir": str(context.exports_dir),
         "commands": [
             (
-                "uv run python -m dltr export onnx "
+                "uv run python scripts/run_dltr.py export onnx "
                 f"--checkpoint {checkpoint} --output {context.exports_dir / 'model.onnx'}"
             ),
             (
-                "uv run python -m dltr export torchscript "
+                "uv run python scripts/run_dltr.py export torchscript "
                 f"--checkpoint {checkpoint} --output {context.exports_dir / 'model.ts'}"
             ),
         ],

@@ -116,19 +116,62 @@ def _find_label_matches(
     if direct_matches:
         return direct_matches
 
-    if image_path.parent.name != "img":
-        return []
+    dataset_specific_matches = _find_dataset_specific_label_matches(
+        dataset_root=dataset_root,
+        image_path=image_path,
+        label_extensions=label_extensions,
+    )
+    if dataset_specific_matches:
+        return dataset_specific_matches
 
-    candidate_dirs = [
-        dataset_root / "gt",
-        dataset_root / "gt_unicode",
-    ]
+    candidate_dirs = _rects_candidate_label_dirs(dataset_root=dataset_root, image_path=image_path)
     matches: list[Path] = []
     for candidate_dir in candidate_dirs:
         if not candidate_dir.exists():
             continue
         for extension in label_extensions:
             candidate = candidate_dir / f"{image_path.stem}{extension}"
+            if candidate.exists() and candidate.is_file():
+                matches.append(candidate)
+    return matches
+
+
+def _rects_candidate_label_dirs(dataset_root: Path, image_path: Path) -> list[Path]:
+    if image_path.parent.name != "img":
+        return []
+
+    base_dirs = [
+        image_path.parent.parent,
+        dataset_root,
+    ]
+    candidates: list[Path] = []
+    seen: set[Path] = set()
+    for base_dir in base_dirs:
+        for label_dir_name in ("gt", "gt_unicode"):
+            candidate = base_dir / label_dir_name
+            if candidate not in seen:
+                seen.add(candidate)
+                candidates.append(candidate)
+    return candidates
+
+
+def _find_dataset_specific_label_matches(
+    dataset_root: Path,
+    image_path: Path,
+    label_extensions: set[str],
+) -> list[Path]:
+    annotation_dir = dataset_root / "annotation"
+    if not annotation_dir.exists():
+        return []
+
+    stem_candidates = [image_path.stem]
+    if image_path.stem.startswith("image_"):
+        stem_candidates.append(image_path.stem.replace("image_", "gt_img_", 1))
+
+    matches: list[Path] = []
+    for stem in stem_candidates:
+        for extension in label_extensions:
+            candidate = annotation_dir / f"{stem}{extension}"
             if candidate.exists() and candidate.is_file():
                 matches.append(candidate)
     return matches

@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 from dltr.cli import main
@@ -173,3 +175,18 @@ def test_demo_and_end2end_generate_outputs(tmp_path: Path, monkeypatch) -> None:
     assert end2end_code == 0
     assert (tmp_path / "reports" / "demo_assets" / "demo_preview_semantic_eval.md").exists()
     assert (tmp_path / "reports" / "eval" / "end2end_preview.json").exists()
+
+
+def test_wrapper_entrypoint_works_from_repo_root() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+
+    result = subprocess.run(
+        [sys.executable, "scripts/run_dltr.py", "--version"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "dltr" in result.stdout.lower()
