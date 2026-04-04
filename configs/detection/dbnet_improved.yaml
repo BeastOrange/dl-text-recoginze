@@ -1,7 +1,8 @@
 experiment_name: det_dbnet_hardcase_v1
 model_name: dbnet
-dataset_dir: data/raw/rects/images
-annotation_dir: data/raw/rects/labels
+dataset_dir: data/raw/rects
+train_manifest: data/processed/detection_splits/train.jsonl
+validation_manifest: data/processed/detection_splits/val.jsonl
 output_root: artifacts/detection/det_dbnet_hardcase_v1
 train_split: train
 val_split: val
@@ -13,9 +14,13 @@ image_extensions:
 epochs: 140
 batch_size: 12
 learning_rate: 0.0008
+image_height: 256
+image_width: 256
+device: auto
+num_workers: 0
 seed: 2026
 hard_case_sampling: true
 multi_scale_augmentation: true
 description: >
-  Improved DBNet scaffold config with hard-case sampling and multi-scale augmentation flags.
-  Use this to track experiment metadata before full model training is integrated.
+  Improved DBNet-style tiny config with hard-case sampling and multi-scale augmentation flags.
+  Use this after detection manifests are prepared from ReCTS and ShopSign.

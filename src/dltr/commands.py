@@ -30,6 +30,7 @@ from dltr.models.detection import (
     build_export_plan,
     load_detection_run_config,
     prepare_detection_run,
+    train_dbnet_detector,
     write_evaluation_summary,
     write_experiment_metadata,
 )
@@ -300,11 +301,22 @@ def cmd_data_prepare_detection(args: argparse.Namespace) -> int:
 
 def cmd_train_detector(args: argparse.Namespace) -> int:
     config = load_detection_run_config(_resolve_existing_path_arg(args.config))
-    context = prepare_detection_run(config, run_id=args.run_id)
-    artifacts = write_experiment_metadata(context, notes=args.notes)
-    print(f"Detection run scaffold created: {context.run_dir}")
-    print(f"metadata_json={artifacts['json']}")
-    print(f"metadata_markdown={artifacts['markdown']}")
+    try:
+        result = train_dbnet_detector(
+            config,
+            paths=ensure_runtime_dirs(),
+            run_id=args.run_id,
+        )
+    except RuntimeError as exc:
+        print(str(exc))
+        return 1
+    except ValueError as exc:
+        print(str(exc))
+        return 1
+    print(f"run_dir={result.context.run_dir}")
+    print(f"checkpoint={result.checkpoint_path}")
+    print(f"summary={result.summary_path}")
+    print(f"report={result.report_paths['markdown']}")
     return 0
 
 

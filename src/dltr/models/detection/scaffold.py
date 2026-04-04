@@ -17,6 +17,8 @@ class DetectionRunConfig:
     model_name: str
     dataset_dir: Path
     annotation_dir: Path | None = None
+    train_manifest: Path | None = None
+    validation_manifest: Path | None = None
     output_root: Path | None = None
     train_split: str = "train"
     val_split: str = "val"
@@ -24,6 +26,10 @@ class DetectionRunConfig:
     epochs: int = 120
     batch_size: int = 16
     learning_rate: float = 0.001
+    image_height: int = 256
+    image_width: int = 256
+    device: str = "auto"
+    num_workers: int = 0
     seed: int = 42
     hard_case_sampling: bool = False
     multi_scale_augmentation: bool = False
@@ -41,6 +47,10 @@ class DetectionRunConfig:
             raise ValueError("batch_size must be > 0")
         if self.learning_rate <= 0:
             raise ValueError("learning_rate must be > 0")
+        if self.image_height <= 0 or self.image_width <= 0:
+            raise ValueError("image_height and image_width must be > 0")
+        if self.num_workers < 0:
+            raise ValueError("num_workers must be >= 0")
         if not self.image_extensions:
             raise ValueError("image_extensions must not be empty")
 
@@ -73,6 +83,16 @@ def load_detection_run_config(config_path: str | Path) -> DetectionRunConfig:
     annotation_dir = (
         _resolve_path(annotation_dir_raw, root, "annotation_dir") if annotation_dir_raw else None
     )
+    train_manifest_raw = data.pop("train_manifest", None)
+    train_manifest = (
+        _resolve_path(train_manifest_raw, root, "train_manifest") if train_manifest_raw else None
+    )
+    validation_manifest_raw = data.pop("validation_manifest", None)
+    validation_manifest = (
+        _resolve_path(validation_manifest_raw, root, "validation_manifest")
+        if validation_manifest_raw
+        else None
+    )
     output_root_raw = data.pop("output_root", None)
     output_root = _resolve_path(output_root_raw, root, "output_root") if output_root_raw else None
 
@@ -81,6 +101,8 @@ def load_detection_run_config(config_path: str | Path) -> DetectionRunConfig:
         model_name=str(data.pop("model_name", "dbnet")).strip(),
         dataset_dir=dataset_dir,
         annotation_dir=annotation_dir,
+        train_manifest=train_manifest,
+        validation_manifest=validation_manifest,
         output_root=output_root,
         train_split=str(data.pop("train_split", "train")),
         val_split=str(data.pop("val_split", "val")),
@@ -88,6 +110,10 @@ def load_detection_run_config(config_path: str | Path) -> DetectionRunConfig:
         epochs=int(data.pop("epochs", 120)),
         batch_size=int(data.pop("batch_size", 16)),
         learning_rate=float(data.pop("learning_rate", 0.001)),
+        image_height=int(data.pop("image_height", 256)),
+        image_width=int(data.pop("image_width", 256)),
+        device=str(data.pop("device", "auto")).strip() or "auto",
+        num_workers=int(data.pop("num_workers", 0)),
         seed=int(data.pop("seed", 42)),
         hard_case_sampling=bool(data.pop("hard_case_sampling", False)),
         multi_scale_augmentation=bool(data.pop("multi_scale_augmentation", False)),
@@ -226,7 +252,13 @@ def _resolve_path(value: Any, root: Path, field_name: str) -> Path:
 
 def _serialize_config(config: DetectionRunConfig) -> dict[str, Any]:
     payload = asdict(config)
-    for key in ("dataset_dir", "annotation_dir", "output_root"):
+    for key in (
+        "dataset_dir",
+        "annotation_dir",
+        "train_manifest",
+        "validation_manifest",
+        "output_root",
+    ):
         value = payload[key]
         payload[key] = str(value) if value is not None else None
     payload["image_extensions"] = list(config.image_extensions)
@@ -243,6 +275,8 @@ def _metadata_markdown(payload: dict[str, Any]) -> str:
         f"- Experiment: `{cfg['experiment_name']}`",
         f"- Model: `{cfg['model_name']}`",
         f"- Dataset Dir: `{cfg['dataset_dir']}`",
+        f"- Train Manifest: `{cfg['train_manifest'] or 'N/A'}`",
+        f"- Validation Manifest: `{cfg['validation_manifest'] or 'N/A'}`",
         f"- Notes: {payload['notes'] or 'N/A'}",
         "",
         "## Training Parameters",
@@ -250,6 +284,7 @@ def _metadata_markdown(payload: dict[str, Any]) -> str:
         f"- Epochs: `{cfg['epochs']}`",
         f"- Batch Size: `{cfg['batch_size']}`",
         f"- Learning Rate: `{cfg['learning_rate']}`",
+        f"- Image Size: `{cfg['image_height']}x{cfg['image_width']}`",
         f"- Hard Case Sampling: `{cfg['hard_case_sampling']}`",
         f"- Multi Scale Augmentation: `{cfg['multi_scale_augmentation']}`",
     ]
