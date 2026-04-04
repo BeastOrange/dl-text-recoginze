@@ -17,6 +17,7 @@ from dltr.commands import (
     cmd_evaluate_recognizer,
     cmd_evaluate_semantic,
     cmd_export_onnx,
+    cmd_report_summarize_training,
     cmd_sync_linux,
     cmd_train_detector,
     cmd_train_recognizer,
@@ -172,6 +173,16 @@ def build_parser() -> argparse.ArgumentParser:
     sync_linux.add_argument("--target-dir", required=True)
     sync_linux.add_argument("--dry-run", action="store_true")
     sync_linux.set_defaults(handler=cmd_sync_linux)
+
+    report = top.add_parser("report", help="Report and summary commands.")
+    report_sub = report.add_subparsers(dest="command")
+    report_sub.required = True
+    report_training = report_sub.add_parser("summarize-training")
+    report_training.add_argument("--task-name", required=True)
+    report_training.add_argument("--primary-metric", required=True)
+    report_training.add_argument("--run-dirs", nargs="+", required=True)
+    report_training.add_argument("--output-dir")
+    report_training.set_defaults(handler=cmd_report_summarize_training)
 
     return parser
 

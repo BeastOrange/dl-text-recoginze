@@ -18,6 +18,7 @@ from dltr.models.detection.scaffold import (
     write_experiment_metadata,
 )
 from dltr.project import ProjectPaths
+from dltr.visualization.training_reports import render_detection_history_plot
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ class DetectionTrainingResult:
     best_checkpoint_path: Path
     history_path: Path
     history_markdown_path: Path
+    history_plot_path: Path
     summary_path: Path
     report_paths: dict[str, Path]
 
@@ -159,12 +161,18 @@ def train_dbnet_detector(
         _build_history_markdown(config.experiment_name, history),
         encoding="utf-8",
     )
+    history_plot_paths = render_detection_history_plot(
+        run_name=config.experiment_name,
+        history_path=history_path,
+        output_dir=context.run_dir / "reports",
+    )
     summary_path.write_text(
         json.dumps(
             {
                 "checkpoint_path": str(checkpoint_path),
                 "best_checkpoint_path": str(best_checkpoint_path),
                 "history_path": str(history_path),
+                "history_plot_path": str(history_plot_paths["png"]),
                 "report_paths": {key: str(value) for key, value in report_paths.items()},
                 "metrics": metrics,
             },
@@ -179,6 +187,7 @@ def train_dbnet_detector(
         best_checkpoint_path=best_checkpoint_path,
         history_path=history_path,
         history_markdown_path=history_markdown_path,
+        history_plot_path=history_plot_paths["png"],
         summary_path=summary_path,
         report_paths=report_paths,
     )

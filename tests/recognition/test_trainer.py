@@ -87,6 +87,7 @@ def test_train_crnn_recognizer_runs_smoke_epoch(tmp_path: Path) -> None:
     assert result.best_checkpoint_path.exists()
     assert result.history_path.exists()
     assert result.history_markdown_path.exists()
+    assert result.history_plot_path.exists()
     assert result.summary_path.exists()
     assert result.report_path.exists()
     assert result.metrics.samples == 2

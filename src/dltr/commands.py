@@ -11,22 +11,24 @@ from typing import Any
 
 import yaml
 
-from dltr.data import (
-    analyze_hardcase_metadata,
-    build_charset_from_manifest,
+from dltr.data.config import load_data_config
+from dltr.data.detection_preparation import (
     build_detection_manifest,
-    build_recognition_manifest,
-    collect_inventories,
     combine_detection_manifests,
-    combine_recognition_manifests,
-    extract_recognition_crops_from_detection_manifest,
-    load_data_config,
     split_detection_manifest,
-    split_manifest,
-    validate_dataset_paths,
-    write_eda_markdown_report,
 )
+from dltr.data.hardcase import analyze_hardcase_metadata
+from dltr.data.inventory import collect_inventories
+from dltr.data.manifest import build_recognition_manifest
+from dltr.data.preparation import (
+    build_charset_from_manifest,
+    combine_recognition_manifests,
+    split_manifest,
+)
+from dltr.data.recognition_crops import extract_recognition_crops_from_detection_manifest
+from dltr.data.reporting import write_eda_markdown_report
 from dltr.data.types import DatasetSpec
+from dltr.data.validation import validate_dataset_paths
 from dltr.models.detection import (
     build_export_plan,
     load_detection_run_config,
@@ -54,6 +56,7 @@ from dltr.pipeline.end_to_end import run_end_to_end_pipeline
 from dltr.project import ProjectPaths, ensure_runtime_dirs
 from dltr.semantic import SemanticPrediction, extract_semantic_slots, generate_semantic_report
 from dltr.semantic.classes import SEMANTIC_CLASSES, validate_semantic_class
+from dltr.visualization.training_reports import aggregate_training_runs
 
 
 @dataclass(frozen=True)
@@ -391,6 +394,7 @@ def cmd_train_detector(args: argparse.Namespace) -> int:
     print(f"checkpoint={result.checkpoint_path}")
     print(f"best_checkpoint={result.best_checkpoint_path}")
     print(f"history={result.history_path}")
+    print(f"history_plot={result.history_plot_path}")
     print(f"summary={result.summary_path}")
     print(f"report={result.report_paths['markdown']}")
     return 0
@@ -417,8 +421,24 @@ def cmd_train_recognizer(args: argparse.Namespace) -> int:
     print(f"checkpoint={result.checkpoint_path}")
     print(f"best_checkpoint={result.best_checkpoint_path}")
     print(f"history={result.history_path}")
+    print(f"history_plot={result.history_plot_path}")
     print(f"summary={result.summary_path}")
     print(f"report={result.report_path}")
+    return 0
+
+
+def cmd_report_summarize_training(args: argparse.Namespace) -> int:
+    run_dirs = [_resolve_existing_path_arg(path) for path in args.run_dirs]
+    output_dir = _resolve_output_path(args.output_dir, ProjectPaths.from_root().reports / "train")
+    outputs = aggregate_training_runs(
+        run_dirs=run_dirs,
+        output_dir=output_dir,
+        task_name=args.task_name,
+        primary_metric=args.primary_metric,
+    )
+    print(f"json={outputs['json']}")
+    print(f"markdown={outputs['markdown']}")
+    print(f"png={outputs['png']}")
     return 0
 
 

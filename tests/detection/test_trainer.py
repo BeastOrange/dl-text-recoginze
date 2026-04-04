@@ -78,6 +78,7 @@ def test_train_dbnet_detector_runs_smoke_epoch(tmp_path: Path) -> None:
     assert result.best_checkpoint_path.exists()
     assert result.history_path.exists()
     assert result.history_markdown_path.exists()
+    assert result.history_plot_path.exists()
     assert result.summary_path.exists()
     assert result.report_paths["markdown"].exists()
     history_lines = result.history_path.read_text(encoding="utf-8").splitlines()

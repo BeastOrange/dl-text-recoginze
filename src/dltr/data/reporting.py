@@ -4,7 +4,7 @@ from pathlib import Path
 
 from dltr.data.types import DataConfig, DatasetInventory, HardCaseMetadata, ValidationSummary
 from dltr.project import ProjectPaths
-from dltr.visualization import render_eda_markdown
+from dltr.visualization.eda_markdown import render_eda_markdown
 
 
 def write_eda_markdown_report(

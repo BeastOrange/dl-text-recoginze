@@ -19,6 +19,7 @@ from dltr.models.recognition.evaluation import (
 )
 from dltr.models.recognition.metrics import compute_recognition_scores
 from dltr.project import ProjectPaths
+from dltr.visualization.training_reports import render_recognition_history_plot
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,7 @@ class RecognitionTrainingResult:
     best_checkpoint_path: Path
     history_path: Path
     history_markdown_path: Path
+    history_plot_path: Path
     summary_path: Path
     report_path: Path
     metrics: RecognitionMetrics
@@ -194,6 +196,11 @@ def train_crnn_recognizer(
         _build_history_markdown(config.experiment_name, history),
         encoding="utf-8",
     )
+    history_plot_paths = render_recognition_history_plot(
+        run_name=config.experiment_name,
+        history_path=history_path,
+        output_dir=run_dir,
+    )
     summary_path.write_text(
         json.dumps(
             {
@@ -201,6 +208,7 @@ def train_crnn_recognizer(
                 "checkpoint_path": str(checkpoint_path),
                 "best_checkpoint_path": str(best_checkpoint_path),
                 "history_path": str(history_path),
+                "history_plot_path": str(history_plot_paths["png"]),
                 "report_path": str(report_path),
                 "metrics": asdict(metrics),
             },
@@ -215,6 +223,7 @@ def train_crnn_recognizer(
         best_checkpoint_path=best_checkpoint_path,
         history_path=history_path,
         history_markdown_path=history_markdown_path,
+        history_plot_path=history_plot_paths["png"],
         summary_path=summary_path,
         report_path=report_path,
         metrics=metrics,
