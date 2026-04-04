@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +39,7 @@ class RecognitionExperimentConfig:
     experiment_name: str
     model_name: str
     dataset_manifest: str
+    validation_manifest: str
     charset_file: str
     output_dir: str
     epochs: int
@@ -46,7 +47,9 @@ class RecognitionExperimentConfig:
     image_height: int
     image_width: int
     learning_rate: float
-    second_pass: SecondPassConfig
+    second_pass: SecondPassConfig = field(default_factory=SecondPassConfig)
+    device: str = "auto"
+    num_workers: int = 0
 
     def validate(self) -> None:
         if not self.experiment_name.strip():
@@ -55,6 +58,8 @@ class RecognitionExperimentConfig:
             raise ValueError(f"model_name must be one of {sorted(SUPPORTED_MODELS)}")
         if not self.dataset_manifest.strip():
             raise ValueError("dataset_manifest must be non-empty")
+        if not self.validation_manifest.strip():
+            raise ValueError("validation_manifest must be non-empty")
         if not self.charset_file.strip():
             raise ValueError("charset_file must be non-empty")
         if not self.output_dir.strip():
@@ -63,6 +68,8 @@ class RecognitionExperimentConfig:
             raise ValueError("epochs must be > 0")
         if self.batch_size <= 0:
             raise ValueError("batch_size must be > 0")
+        if self.num_workers < 0:
+            raise ValueError("num_workers must be >= 0")
         if self.image_height <= 0 or self.image_width <= 0:
             raise ValueError("image_height and image_width must be > 0")
         if self.learning_rate <= 0:
@@ -85,6 +92,7 @@ class RecognitionExperimentConfig:
             experiment_name=str(payload.get("experiment_name", "")).strip(),
             model_name=str(payload.get("model_name", "")).strip().lower(),
             dataset_manifest=str(payload.get("dataset_manifest", "")).strip(),
+            validation_manifest=str(payload.get("validation_manifest", "")).strip(),
             charset_file=str(payload.get("charset_file", "")).strip(),
             output_dir=str(payload.get("output_dir", "")).strip(),
             epochs=int(payload.get("epochs", 0)),
@@ -92,6 +100,8 @@ class RecognitionExperimentConfig:
             image_height=int(payload.get("image_height", 0)),
             image_width=int(payload.get("image_width", 0)),
             learning_rate=float(payload.get("learning_rate", 0.0)),
+            device=str(payload.get("device", "auto")).strip() or "auto",
+            num_workers=int(payload.get("num_workers", 0)),
             second_pass=second_pass,
         )
         config.validate()

@@ -63,11 +63,13 @@ def test_build_manifest_command_emits_jsonl_rows(tmp_path: Path, monkeypatch) ->
     assert payload["text"] == "测试文本"
 
 
-def test_train_recognizer_creates_train_plan(tmp_path: Path, monkeypatch) -> None:
+def test_train_recognizer_returns_nonzero_for_transocr_placeholder(tmp_path: Path, monkeypatch) -> None:
     (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
     manifest = tmp_path / "data" / "processed" / "train.jsonl"
+    val_manifest = tmp_path / "data" / "processed" / "val.jsonl"
     manifest.parent.mkdir(parents=True)
     manifest.write_text('{"text":"测试"}\n', encoding="utf-8")
+    val_manifest.write_text('{"text":"测试"}\n', encoding="utf-8")
     charset = tmp_path / "data" / "processed" / "charset.txt"
     charset.write_text("测\n试\n", encoding="utf-8")
     config_dir = tmp_path / "configs" / "recognition"
@@ -78,6 +80,7 @@ def test_train_recognizer_creates_train_plan(tmp_path: Path, monkeypatch) -> Non
                 "experiment_name: rec_smoke",
                 "model_name: transocr",
                 "dataset_manifest: data/processed/train.jsonl",
+                "validation_manifest: data/processed/val.jsonl",
                 "charset_file: data/processed/charset.txt",
                 "output_dir: artifacts/checkpoints/recognition/smoke",
                 "epochs: 1",
@@ -101,20 +104,10 @@ def test_train_recognizer_creates_train_plan(tmp_path: Path, monkeypatch) -> Non
             "configs/recognition/recognition.yaml",
             "--run-id",
             "smoke-run",
-        ]
-    )
+            ]
+        )
 
-    plan_path = (
-        tmp_path
-        / "artifacts"
-        / "checkpoints"
-        / "recognition"
-        / "smoke"
-        / "smoke-run"
-        / "train_plan.md"
-    )
-    assert exit_code == 0
-    assert plan_path.exists()
+    assert exit_code == 1
 
 
 def test_evaluate_semantic_writes_report(tmp_path: Path, monkeypatch) -> None:

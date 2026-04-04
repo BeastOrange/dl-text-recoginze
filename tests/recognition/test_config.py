@@ -11,6 +11,7 @@ def test_load_recognition_config_valid(tmp_path: Path) -> None:
         "experiment_name": "transocr_demo",
         "model_name": "transocr",
         "dataset_manifest": "data/processed/manifest.jsonl",
+        "validation_manifest": "data/processed/val.jsonl",
         "charset_file": "data/processed/charset.txt",
         "output_dir": "artifacts/checkpoints/recognition/transocr_demo",
         "epochs": 2,
@@ -34,6 +35,7 @@ def test_load_recognition_config_valid(tmp_path: Path) -> None:
     config = load_recognition_config(config_path)
 
     assert config.model_name == "transocr"
+    assert config.validation_manifest == "data/processed/val.jsonl"
     assert config.second_pass.enabled is True
     assert config.second_pass.confidence_threshold == pytest.approx(0.8)
 
@@ -43,6 +45,7 @@ def test_load_recognition_config_rejects_invalid_model(tmp_path: Path) -> None:
         "experiment_name": "bad_model",
         "model_name": "ctc_transformer",
         "dataset_manifest": "data/processed/manifest.jsonl",
+        "validation_manifest": "data/processed/val.jsonl",
         "charset_file": "data/processed/charset.txt",
         "output_dir": "artifacts/checkpoints/recognition/bad",
         "epochs": 10,

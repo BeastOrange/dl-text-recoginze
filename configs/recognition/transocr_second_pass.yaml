@@ -1,6 +1,7 @@
 experiment_name: transocr_refine_cn_scene
 model_name: transocr
 dataset_manifest: data/processed/recognition_splits/train.jsonl
+validation_manifest: data/processed/recognition_splits/val.jsonl
 charset_file: data/processed/charset_zh_mixed.txt
 output_dir: artifacts/checkpoints/recognition/transocr_refine
 epochs: 100
@@ -8,6 +9,8 @@ batch_size: 128
 image_height: 48
 image_width: 320
 learning_rate: 0.0007
+device: auto
+num_workers: 0
 second_pass:
   enabled: true
   confidence_threshold: 0.80

@@ -47,6 +47,7 @@ from dltr.models.recognition.refinement import (
     second_pass_reasons,
     should_apply_second_pass,
 )
+from dltr.models.recognition.trainer import train_crnn_recognizer
 from dltr.project import ProjectPaths, ensure_runtime_dirs
 from dltr.semantic import SemanticPrediction, extract_semantic_slots, generate_semantic_report
 from dltr.semantic.classes import SEMANTIC_CLASSES, validate_semantic_class
@@ -308,13 +309,26 @@ def cmd_train_detector(args: argparse.Namespace) -> int:
 
 
 def cmd_train_recognizer(args: argparse.Namespace) -> int:
-    paths = ensure_runtime_dirs()
     config = load_recognition_config(_resolve_existing_path_arg(args.config))
-    run_dir = _prepare_recognition_run(paths, config, args.run_id)
-    outputs = _write_recognition_train_plan(run_dir, config)
-    print(f"Recognition run scaffold created: {run_dir}")
-    print(f"plan_json={outputs['json']}")
-    print(f"plan_markdown={outputs['markdown']}")
+    if config.model_name != "crnn":
+        print(
+            "TransOCR real training loop is not implemented yet. "
+            "Use the prepared manifests/charset and keep this config for later integration."
+        )
+        return 1
+    try:
+        result = train_crnn_recognizer(
+            config,
+            paths=ensure_runtime_dirs(),
+            run_id=args.run_id,
+        )
+    except RuntimeError as exc:
+        print(str(exc))
+        return 1
+    print(f"run_dir={result.run_dir}")
+    print(f"checkpoint={result.checkpoint_path}")
+    print(f"summary={result.summary_path}")
+    print(f"report={result.report_path}")
     return 0
 
 
