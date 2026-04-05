@@ -7,6 +7,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from dltr.terminal import ProgressBar
+
 
 @dataclass(frozen=True)
 class RecognitionCropSummary:
@@ -47,6 +49,7 @@ def extract_recognition_crops_from_detection_manifest(
     emitted_crops = 0
     skipped_instances = 0
     written_rows: list[str] = []
+    progress = ProgressBar(total=len(rows), description=f"识别裁剪 {split_name}")
 
     for row_index, raw_line in enumerate(rows):
         if max_samples is not None and emitted_crops >= max_samples:
@@ -54,9 +57,17 @@ def extract_recognition_crops_from_detection_manifest(
         payload = json.loads(raw_line)
         image_path = Path(str(payload.get("image_path", "")))
         if not image_path.exists():
+            progress.update(
+                row_index + 1,
+                metrics={"crops": emitted_crops, "skipped": skipped_instances},
+            )
             continue
         image = cv2.imread(str(image_path))
         if image is None:
+            progress.update(
+                row_index + 1,
+                metrics={"crops": emitted_crops, "skipped": skipped_instances},
+            )
             continue
 
         dataset = str(payload.get("dataset", "")).strip() or "unknown"
@@ -99,11 +110,16 @@ def extract_recognition_crops_from_detection_manifest(
                 )
             )
             emitted_crops += 1
+        progress.update(
+            row_index + 1,
+            metrics={"crops": emitted_crops, "skipped": skipped_instances},
+        )
 
     output_manifest_path.write_text(
         "\n".join(written_rows) + ("\n" if written_rows else ""),
         encoding="utf-8",
     )
+    progress.finish(metrics={"crops": emitted_crops, "skipped": skipped_instances})
     return RecognitionCropSummary(
         split_name=split_name,
         source_rows=len(rows),
