@@ -64,6 +64,7 @@ from dltr.semantic import SemanticPrediction, extract_semantic_slots, generate_s
 from dltr.semantic.classes import SEMANTIC_CLASSES, validate_semantic_class
 from dltr.semantic.config import load_semantic_config
 from dltr.semantic.trainer import train_semantic_classifier
+from dltr.terminal import print_artifact_summary, print_stage_header
 from dltr.visualization.ablation_reports import build_ablation_overview
 from dltr.visualization.hardcase_reports import build_hardcase_overview
 from dltr.visualization.project_summary import build_project_training_summary
@@ -171,6 +172,13 @@ def cmd_data_build_rec_lmdb(args: argparse.Namespace) -> int:
 def cmd_data_prepare_recognition(args: argparse.Namespace) -> int:
     paths = ensure_runtime_dirs()
     config = _load_data_config_arg(args.config, paths)
+    print_stage_header(
+        "开始准备识别数据",
+        [
+            ("配置文件", _resolve_existing_path_arg(args.config)),
+            ("目标数据集", ", ".join(args.datasets)),
+        ],
+    )
     selected_specs = [_find_dataset_spec(config.datasets, name) for name in args.datasets]
 
     manifest_paths: list[Path] = []
@@ -245,15 +253,21 @@ def cmd_data_prepare_recognition(args: argparse.Namespace) -> int:
         encoding="utf-8",
     )
 
-    print(f"combined_manifest={combined_summary.output_path}")
-    print(f"charset={charset_summary.output_path}")
-    print(f"split_dir={split_summary.output_dir}")
-    print(f"summary={summary_path}")
+    print_artifact_summary(
+        "识别数据准备完成，已生成以下产物：",
+        [
+            ("合并清单", combined_summary.output_path),
+            ("字符集文件", charset_summary.output_path),
+            ("识别划分目录", split_summary.output_dir),
+            ("中文说明摘要", summary_path),
+        ],
+    )
     return 0
 
 
 def cmd_data_prepare_recognition_crops(args: argparse.Namespace) -> int:
     paths = ensure_runtime_dirs()
+    print_stage_header("开始根据检测标注裁剪识别样本")
     source_dir = _resolve_output_path(
         args.detection_split_dir,
         paths.data_processed / "detection_splits",
@@ -317,16 +331,29 @@ def cmd_data_prepare_recognition_crops(args: argparse.Namespace) -> int:
         + "\n",
         encoding="utf-8",
     )
-    print(f"combined_manifest={combined_path}")
-    print(f"charset={charset_path}")
-    print(f"split_dir={split_root}")
-    print(f"summary={summary_path}")
+    print_artifact_summary(
+        "识别裁剪数据准备完成，已生成以下产物：",
+        [
+            ("裁剪图目录", crop_root),
+            ("合并清单", combined_path),
+            ("字符集文件", charset_path),
+            ("识别划分目录", split_root),
+            ("中文说明摘要", summary_path),
+        ],
+    )
     return 0
 
 
 def cmd_data_prepare_detection(args: argparse.Namespace) -> int:
     paths = ensure_runtime_dirs()
     config = _load_data_config_arg(args.config, paths)
+    print_stage_header(
+        "开始准备检测数据",
+        [
+            ("配置文件", _resolve_existing_path_arg(args.config)),
+            ("目标数据集", ", ".join(args.datasets)),
+        ],
+    )
     selected_specs = [_find_dataset_spec(config.datasets, name) for name in args.datasets]
 
     manifest_paths: list[Path] = []
@@ -382,14 +409,20 @@ def cmd_data_prepare_detection(args: argparse.Namespace) -> int:
         + "\n",
         encoding="utf-8",
     )
-    print(f"combined_manifest={combined_path}")
-    print(f"split_dir={split_summary.output_dir}")
-    print(f"summary={summary_path}")
+    print_artifact_summary(
+        "检测数据准备完成，已生成以下产物：",
+        [
+            ("合并清单", combined_path),
+            ("检测划分目录", split_summary.output_dir),
+            ("中文说明摘要", summary_path),
+        ],
+    )
     return 0
 
 
 def cmd_data_prepare_semantic(args: argparse.Namespace) -> int:
     paths = ensure_runtime_dirs()
+    print_stage_header("开始构建语义数据集")
     outputs = build_semantic_manifests_from_recognition(
         recognition_split_dir=_resolve_output_path(
             args.recognition_split_dir,
@@ -400,13 +433,30 @@ def cmd_data_prepare_semantic(args: argparse.Namespace) -> int:
             paths.root / "data" / "semantic" / "cn_scenetext_sem",
         ),
     )
-    for split, path in outputs.items():
-        print(f"{split}={path}")
+    print_artifact_summary(
+        "语义数据准备完成，已生成以下产物：",
+        [
+            ("训练集", outputs["train"]),
+            ("验证集", outputs["val"]),
+            ("测试集", outputs["test"]),
+        ],
+    )
     return 0
 
 
 def cmd_train_detector(args: argparse.Namespace) -> int:
-    config = load_detection_run_config(_resolve_existing_path_arg(args.config))
+    config_path = _resolve_existing_path_arg(args.config)
+    config = load_detection_run_config(config_path)
+    print_stage_header(
+        "开始检测训练",
+        [
+            ("配置文件", config_path),
+            ("实验名称", config.experiment_name),
+            ("训练轮数", config.epochs),
+            ("批大小", config.batch_size),
+            ("图像尺寸", f"{config.image_width}x{config.image_height}"),
+        ],
+    )
     try:
         result = train_dbnet_detector(
             config,
@@ -419,22 +469,38 @@ def cmd_train_detector(args: argparse.Namespace) -> int:
     except ValueError as exc:
         print(str(exc))
         return 1
-    print(f"run_dir={result.context.run_dir}")
-    print(f"checkpoint={result.checkpoint_path}")
-    print(f"best_checkpoint={result.best_checkpoint_path}")
-    print(f"history={result.history_path}")
-    print(f"history_plot={result.history_plot_path}")
-    print(f"summary={result.summary_path}")
-    print(f"report={result.report_paths['markdown']}")
+    print_artifact_summary(
+        "检测训练完成，已生成以下产物：",
+        [
+            ("运行目录", result.context.run_dir),
+            ("最新权重", result.checkpoint_path),
+            ("最佳权重", result.best_checkpoint_path),
+            ("训练历史", result.history_path),
+            ("训练曲线图", result.history_plot_path),
+            ("训练摘要", result.summary_path),
+            ("评估报告", result.report_paths["markdown"]),
+        ],
+    )
     return 0
 
 
 def cmd_train_recognizer(args: argparse.Namespace) -> int:
-    config = load_recognition_config(_resolve_existing_path_arg(args.config))
+    config_path = _resolve_existing_path_arg(args.config)
+    config = load_recognition_config(config_path)
+    print_stage_header(
+        "开始识别训练",
+        [
+            ("配置文件", config_path),
+            ("实验名称", config.experiment_name),
+            ("训练轮数", config.epochs),
+            ("批大小", config.batch_size),
+            ("图像尺寸", f"{config.image_width}x{config.image_height}"),
+        ],
+    )
     if config.model_name != "crnn":
         print(
-            "TransOCR real training loop is not implemented yet. "
-            "Use the prepared manifests/charset and keep this config for later integration."
+            "当前仓库还没有接入 TransOCR 的真实训练循环。"
+            "请先使用 CRNN 配置训练，或后续再接入 Hugging Face 权重。"
         )
         return 1
     try:
@@ -446,13 +512,18 @@ def cmd_train_recognizer(args: argparse.Namespace) -> int:
     except RuntimeError as exc:
         print(str(exc))
         return 1
-    print(f"run_dir={result.run_dir}")
-    print(f"checkpoint={result.checkpoint_path}")
-    print(f"best_checkpoint={result.best_checkpoint_path}")
-    print(f"history={result.history_path}")
-    print(f"history_plot={result.history_plot_path}")
-    print(f"summary={result.summary_path}")
-    print(f"report={result.report_path}")
+    print_artifact_summary(
+        "识别训练完成，已生成以下产物：",
+        [
+            ("运行目录", result.run_dir),
+            ("最新权重", result.checkpoint_path),
+            ("最佳权重", result.best_checkpoint_path),
+            ("训练历史", result.history_path),
+            ("训练曲线图", result.history_plot_path),
+            ("训练摘要", result.summary_path),
+            ("评估报告", result.report_path),
+        ],
+    )
     return 0
 
 
@@ -550,6 +621,7 @@ def cmd_report_build_ablation_overview(args: argparse.Namespace) -> int:
 def cmd_report_build_all(args: argparse.Namespace) -> int:
     root = ProjectPaths.from_root().root
     output_dir = _resolve_output_path(args.output_dir, ProjectPaths.from_root().reports / "train")
+    print_stage_header("开始构建训练汇总报告", [("输出目录", output_dir)])
 
     detection_root = root / "artifacts" / "detection"
     recognition_root = root / "artifacts" / "checkpoints" / "recognition"
@@ -645,17 +717,30 @@ def cmd_report_build_all(args: argparse.Namespace) -> int:
             project_root=ProjectPaths.from_root().root,
         )
         generated.extend(hardcase_outputs.values())
-    for path in generated:
-        print(path)
+    print_artifact_summary(
+        "训练汇总报告构建完成，已生成以下产物：",
+        [(f"文件 {index + 1}", path) for index, path in enumerate(generated)],
+    )
     return 0
 
 
 def cmd_train_semantic(args: argparse.Namespace) -> int:
-    config = load_semantic_config(_resolve_existing_path_arg(args.config))
+    config_path = _resolve_existing_path_arg(args.config)
+    config = load_semantic_config(config_path)
+    print_stage_header(
+        "开始语义训练",
+        [
+            ("配置文件", config_path),
+            ("实验名称", config.experiment_name),
+            ("训练轮数", config.epochs),
+            ("批大小", config.batch_size),
+            ("类别数", len(config.label_set)),
+        ],
+    )
     if config.model_name != "char_linear":
         print(
-            "MacBERT training is not implemented yet. "
-            "Use the char_linear baseline config for real semantic training."
+            "当前仓库还没有接入 MacBERT 的真实训练循环。"
+            "请先使用 char_linear 配置训练，或后续再接入 Hugging Face 权重。"
         )
         return 1
     try:
@@ -667,13 +752,18 @@ def cmd_train_semantic(args: argparse.Namespace) -> int:
     except RuntimeError as exc:
         print(str(exc))
         return 1
-    print(f"run_dir={result.run_dir}")
-    print(f"checkpoint={result.checkpoint_path}")
-    print(f"best_checkpoint={result.best_checkpoint_path}")
-    print(f"history={result.history_path}")
-    print(f"history_plot={result.history_plot_path}")
-    print(f"summary={result.summary_path}")
-    print(f"report={result.report_path}")
+    print_artifact_summary(
+        "语义训练完成，已生成以下产物：",
+        [
+            ("运行目录", result.run_dir),
+            ("最新权重", result.checkpoint_path),
+            ("最佳权重", result.best_checkpoint_path),
+            ("训练历史", result.history_path),
+            ("训练曲线图", result.history_plot_path),
+            ("训练摘要", result.summary_path),
+            ("评估报告", result.report_path),
+        ],
+    )
     return 0
 
 

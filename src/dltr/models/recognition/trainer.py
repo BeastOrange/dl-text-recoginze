@@ -19,6 +19,7 @@ from dltr.models.recognition.evaluation import (
 )
 from dltr.models.recognition.metrics import compute_recognition_scores
 from dltr.project import ProjectPaths
+from dltr.terminal import ProgressBar
 from dltr.visualization.training_reports import render_recognition_history_plot
 
 
@@ -114,11 +115,21 @@ def train_crnn_recognizer(
         mean_edit_distance=1.0,
     )
 
+    print(
+        f"识别训练开始：设备={device} 训练样本={len(train_dataset)} "
+        f"验证样本={len(val_dataset)} 字符集大小={vocabulary.size}",
+        flush=True,
+    )
+
     for epoch in range(1, config.epochs + 1):
         model.train()
         train_loss_total = 0.0
         train_batches = 0
-        for batch in train_loader:
+        train_progress = ProgressBar(
+            total=len(train_loader),
+            description=f"识别训练 第 {epoch}/{config.epochs} 轮",
+        )
+        for batch_index, batch in enumerate(train_loader, start=1):
             images = batch["images"].to(device)
             targets = batch["targets"].to(device)
             target_lengths = batch["target_lengths"].to(device)
@@ -136,9 +147,19 @@ def train_crnn_recognizer(
             optimizer.step()
             train_loss_total += float(loss.item())
             train_batches += 1
+            train_progress.update(batch_index, metrics={"loss": float(loss.item())})
+        train_progress.finish(metrics={"avg_loss": train_loss_total / max(train_batches, 1)})
 
         started_at = time.perf_counter()
-        predictions, targets = _evaluate_ctc_model(model, val_loader, vocabulary, device, torch)
+        predictions, targets = _evaluate_ctc_model(
+            model,
+            val_loader,
+            vocabulary,
+            device,
+            torch,
+            epoch=epoch,
+            total_epochs=config.epochs,
+        )
         latency_ms = ((time.perf_counter() - started_at) / max(1, len(targets))) * 1000
         score_summary = compute_recognition_scores(predictions, targets)
         metrics = RecognitionMetrics(
@@ -172,6 +193,15 @@ def train_crnn_recognizer(
                 },
                 best_checkpoint_path,
             )
+        print(
+            "识别训练轮次完成："
+            f"epoch={epoch}/{config.epochs} "
+            f"train_loss={train_loss:.4f} "
+            f"val_word_accuracy={metrics.word_accuracy:.4f} "
+            f"val_cer={metrics.cer:.4f} "
+            f"val_ned={metrics.ned:.4f}",
+            flush=True,
+        )
     report_path = generate_recognition_evaluation_report(
         run_name=config.experiment_name,
         model_name=config.model_name,
@@ -339,18 +369,27 @@ def _evaluate_ctc_model(
     vocabulary: CharacterVocabulary,
     device: str,
     torch: Any,
+    *,
+    epoch: int,
+    total_epochs: int,
 ) -> tuple[list[str], list[str]]:
     model.eval()
     predictions: list[str] = []
     targets: list[str] = []
+    progress = ProgressBar(
+        total=len(loader),
+        description=f"识别验证 第 {epoch}/{total_epochs} 轮",
+    )
     with torch.no_grad():
-        for batch in loader:
+        for batch_index, batch in enumerate(loader, start=1):
             images = batch["images"].to(device)
             log_probs = model(images)
             greedy_indices = log_probs.argmax(dim=2).permute(1, 0)
             for indices, target in zip(greedy_indices, batch["texts"], strict=True):
                 predictions.append(vocabulary.decode_greedy(indices.tolist()))
                 targets.append(target)
+            progress.update(batch_index, metrics={"samples": len(targets)})
+    progress.finish(metrics={"samples": len(targets)})
     return predictions, targets
 
 

@@ -18,6 +18,7 @@ from dltr.models.detection.scaffold import (
     write_experiment_metadata,
 )
 from dltr.project import ProjectPaths
+from dltr.terminal import ProgressBar
 from dltr.visualization.training_reports import render_detection_history_plot
 
 
@@ -97,11 +98,21 @@ def train_dbnet_detector(
     metrics = {"precision": 0.0, "recall": 0.0, "hmean": 0.0}
     history: list[dict[str, float | int]] = []
 
+    print(
+        f"检测训练开始：设备={device} 训练样本={len(train_dataset)} "
+        f"验证样本={len(val_dataset)}",
+        flush=True,
+    )
+
     for epoch in range(1, config.epochs + 1):
         model.train()
         train_loss_total = 0.0
         train_batches = 0
-        for images, masks in train_loader:
+        train_progress = ProgressBar(
+            total=len(train_loader),
+            description=f"检测训练 第 {epoch}/{config.epochs} 轮",
+        )
+        for batch_index, (images, masks) in enumerate(train_loader, start=1):
             images = images.to(device)
             masks = masks.to(device)
             optimizer.zero_grad()
@@ -111,8 +122,17 @@ def train_dbnet_detector(
             optimizer.step()
             train_loss_total += float(loss.item())
             train_batches += 1
+            train_progress.update(batch_index, metrics={"loss": float(loss.item())})
+        train_progress.finish(metrics={"avg_loss": train_loss_total / max(train_batches, 1)})
 
-        metrics = _evaluate_detector(model, val_loader, device, torch)
+        metrics = _evaluate_detector(
+            model,
+            val_loader,
+            device,
+            torch,
+            epoch=epoch,
+            total_epochs=config.epochs,
+        )
         train_loss = train_loss_total / max(train_batches, 1)
         history.append(
             {
@@ -134,6 +154,15 @@ def train_dbnet_detector(
                 },
                 best_checkpoint_path,
             )
+        print(
+            "检测训练轮次完成："
+            f"epoch={epoch}/{config.epochs} "
+            f"train_loss={train_loss:.4f} "
+            f"val_precision={metrics['precision']:.4f} "
+            f"val_recall={metrics['recall']:.4f} "
+            f"val_hmean={metrics['hmean']:.4f}",
+            flush=True,
+        )
     report_paths = write_evaluation_summary(
         context,
         split="val",
@@ -272,18 +301,39 @@ def _build_dbnet_tiny(nn: Any) -> Any:
     return _Detector()
 
 
-def _evaluate_detector(model: Any, loader: Any, device: str, torch: Any) -> dict[str, float]:
+def _evaluate_detector(
+    model: Any,
+    loader: Any,
+    device: str,
+    torch: Any,
+    *,
+    epoch: int,
+    total_epochs: int,
+) -> dict[str, float]:
     model.eval()
     aggregated = {"precision": 0.0, "recall": 0.0, "hmean": 0.0}
     batches = 0
+    progress = ProgressBar(
+        total=len(loader),
+        description=f"检测验证 第 {epoch}/{total_epochs} 轮",
+    )
     with torch.no_grad():
-        for images, masks in loader:
+        for batch_index, (images, masks) in enumerate(loader, start=1):
             logits = model(images.to(device))
             probs = torch.sigmoid(logits)
             metrics = compute_detection_scores(probs.cpu(), masks.cpu())
             for key, value in metrics.items():
                 aggregated[key] += value
             batches += 1
+            progress.update(
+                batch_index,
+                metrics={
+                    "precision": metrics["precision"],
+                    "recall": metrics["recall"],
+                    "hmean": metrics["hmean"],
+                },
+            )
+    progress.finish()
     if batches == 0:
         return aggregated
     return {key: value / batches for key, value in aggregated.items()}

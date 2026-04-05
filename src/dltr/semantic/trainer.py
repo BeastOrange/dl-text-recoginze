@@ -12,6 +12,7 @@ from dltr.project import ProjectPaths
 from dltr.semantic.config import SemanticExperimentConfig
 from dltr.semantic.dataset import SemanticSample, load_semantic_samples
 from dltr.semantic.metrics import SemanticScoreSummary, compute_semantic_scores
+from dltr.terminal import ProgressBar
 from dltr.visualization.training_reports import render_semantic_history_plot
 
 
@@ -84,11 +85,21 @@ def train_semantic_classifier(
     best_accuracy = float("-inf")
     metrics = SemanticScoreSummary(samples=1, accuracy=0.0, macro_f1=0.0)
 
+    print(
+        f"语义训练开始：设备={device} 训练样本={len(train_dataset)} "
+        f"验证样本={len(val_dataset)} 类别数={len(label_to_index)}",
+        flush=True,
+    )
+
     for epoch in range(1, config.epochs + 1):
         model.train()
         train_loss_total = 0.0
         train_batches = 0
-        for features, labels in train_loader:
+        train_progress = ProgressBar(
+            total=len(train_loader),
+            description=f"语义训练 第 {epoch}/{config.epochs} 轮",
+        )
+        for batch_index, (features, labels) in enumerate(train_loader, start=1):
             features = features.to(device)
             labels = labels.to(device)
             optimizer.zero_grad()
@@ -98,8 +109,18 @@ def train_semantic_classifier(
             optimizer.step()
             train_loss_total += float(loss.item())
             train_batches += 1
+            train_progress.update(batch_index, metrics={"loss": float(loss.item())})
+        train_progress.finish(metrics={"avg_loss": train_loss_total / max(train_batches, 1)})
 
-        metrics = _evaluate_semantic_model(model, val_loader, device, config.label_set, torch)
+        metrics = _evaluate_semantic_model(
+            model,
+            val_loader,
+            device,
+            config.label_set,
+            torch,
+            epoch=epoch,
+            total_epochs=config.epochs,
+        )
         train_loss = train_loss_total / max(train_batches, 1)
         history.append(
             {
@@ -121,6 +142,14 @@ def train_semantic_classifier(
                 },
                 best_checkpoint_path,
             )
+        print(
+            "语义训练轮次完成："
+            f"epoch={epoch}/{config.epochs} "
+            f"train_loss={train_loss:.4f} "
+            f"val_accuracy={metrics.accuracy:.4f} "
+            f"val_macro_f1={metrics.macro_f1:.4f}",
+            flush=True,
+        )
 
     torch.save(
         {
@@ -249,16 +278,25 @@ def _evaluate_semantic_model(
     device: str,
     labels: list[str],
     torch: Any,
+    *,
+    epoch: int,
+    total_epochs: int,
 ) -> SemanticScoreSummary:
     predictions: list[str] = []
     targets: list[str] = []
     model.eval()
+    progress = ProgressBar(
+        total=len(loader),
+        description=f"语义验证 第 {epoch}/{total_epochs} 轮",
+    )
     with torch.no_grad():
-        for features, batch_labels in loader:
+        for batch_index, (features, batch_labels) in enumerate(loader, start=1):
             logits = model(features.to(device))
             batch_predictions = logits.argmax(dim=1).cpu().tolist()
             predictions.extend(labels[index] for index in batch_predictions)
             targets.extend(labels[index] for index in batch_labels.tolist())
+            progress.update(batch_index, metrics={"samples": len(targets)})
+    progress.finish(metrics={"samples": len(targets)})
     return compute_semantic_scores(predictions=predictions, targets=targets)
 
 
