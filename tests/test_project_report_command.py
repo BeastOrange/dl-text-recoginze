@@ -7,6 +7,7 @@ def test_report_summarize_project_command_builds_project_outputs(tmp_path, monke
     (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
     detection_json = tmp_path / "reports" / "train" / "detection_summary.json"
     recognition_json = tmp_path / "reports" / "train" / "recognition_summary.json"
+    semantic_json = tmp_path / "reports" / "train" / "semantic_summary.json"
     detection_json.parent.mkdir(parents=True, exist_ok=True)
     detection_json.write_text(
         json.dumps(
@@ -34,6 +35,19 @@ def test_report_summarize_project_command_builds_project_outputs(tmp_path, monke
         ),
         encoding="utf-8",
     )
+    semantic_json.write_text(
+        json.dumps(
+            [
+                {
+                    "run_name": "sem_a",
+                    "primary_metric": 0.74,
+                    "best_checkpoint_path": "/tmp/sem_a.pt",
+                }
+            ],
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
     monkeypatch.chdir(tmp_path)
 
     exit_code = main(
@@ -44,6 +58,8 @@ def test_report_summarize_project_command_builds_project_outputs(tmp_path, monke
             str(detection_json),
             "--recognition-summary-json",
             str(recognition_json),
+            "--semantic-summary-json",
+            str(semantic_json),
             "--output-dir",
             "reports/train",
         ]

@@ -61,6 +61,8 @@ from dltr.pipeline.end_to_end import run_end_to_end_pipeline
 from dltr.project import ProjectPaths, ensure_runtime_dirs
 from dltr.semantic import SemanticPrediction, extract_semantic_slots, generate_semantic_report
 from dltr.semantic.classes import SEMANTIC_CLASSES, validate_semantic_class
+from dltr.semantic.config import load_semantic_config
+from dltr.semantic.trainer import train_semantic_classifier
 from dltr.visualization.project_summary import build_project_training_summary
 from dltr.visualization.report_index import build_ablation_template, build_training_report_index
 from dltr.visualization.training_reports import aggregate_training_runs
@@ -452,10 +454,16 @@ def cmd_report_summarize_training(args: argparse.Namespace) -> int:
 def cmd_report_summarize_project(args: argparse.Namespace) -> int:
     detection_json = _resolve_existing_path_arg(args.detection_summary_json)
     recognition_json = _resolve_existing_path_arg(args.recognition_summary_json)
+    semantic_json = (
+        _resolve_existing_path_arg(args.semantic_summary_json)
+        if args.semantic_summary_json
+        else None
+    )
     output_dir = _resolve_output_path(args.output_dir, ProjectPaths.from_root().reports / "train")
     outputs = build_project_training_summary(
         detection_summary_json=detection_json,
         recognition_summary_json=recognition_json,
+        semantic_summary_json=semantic_json,
         output_dir=output_dir,
     )
     print(f"json={outputs['json']}")
@@ -492,13 +500,16 @@ def cmd_report_build_all(args: argparse.Namespace) -> int:
 
     detection_root = root / "artifacts" / "detection"
     recognition_root = root / "artifacts" / "checkpoints" / "recognition"
+    semantic_root = root / "artifacts" / "checkpoints" / "semantic"
 
     detection_runs = discover_all_run_dirs(detection_root) if detection_root.exists() else []
     recognition_runs = discover_all_run_dirs(recognition_root) if recognition_root.exists() else []
+    semantic_runs = discover_all_run_dirs(semantic_root) if semantic_root.exists() else []
 
     generated: list[Path] = []
     detection_json: Path | None = None
     recognition_json: Path | None = None
+    semantic_json: Path | None = None
 
     if detection_runs:
         outputs = aggregate_training_runs(
@@ -534,10 +545,28 @@ def cmd_report_build_all(args: argparse.Namespace) -> int:
             )
         )
 
+    if semantic_runs:
+        outputs = aggregate_training_runs(
+            run_dirs=semantic_runs,
+            output_dir=output_dir,
+            task_name="semantic",
+            primary_metric="accuracy",
+        )
+        semantic_json = outputs["json"]
+        generated.extend(outputs.values())
+        generated.append(
+            build_ablation_template(
+                output_dir=output_dir,
+                task_name="semantic",
+                experiments=[run.name for run in semantic_runs],
+            )
+        )
+
     if detection_json and recognition_json:
         project_outputs = build_project_training_summary(
             detection_summary_json=detection_json,
             recognition_summary_json=recognition_json,
+            semantic_summary_json=semantic_json,
             output_dir=output_dir,
         )
         generated.extend(project_outputs.values())
@@ -554,13 +583,29 @@ def cmd_report_build_all(args: argparse.Namespace) -> int:
 
 
 def cmd_train_semantic(args: argparse.Namespace) -> int:
-    paths = ensure_runtime_dirs()
-    config = _load_semantic_train_config(_resolve_existing_path_arg(args.config))
-    run_dir = _prepare_semantic_run(paths, config, args.run_id)
-    outputs = _write_semantic_train_plan(run_dir, config)
-    print(f"Semantic run scaffold created: {run_dir}")
-    print(f"plan_json={outputs['json']}")
-    print(f"plan_markdown={outputs['markdown']}")
+    config = load_semantic_config(_resolve_existing_path_arg(args.config))
+    if config.model_name != "char_linear":
+        print(
+            "MacBERT training is not implemented yet. "
+            "Use the char_linear baseline config for real semantic training."
+        )
+        return 1
+    try:
+        result = train_semantic_classifier(
+            config,
+            paths=ensure_runtime_dirs(),
+            run_id=args.run_id,
+        )
+    except RuntimeError as exc:
+        print(str(exc))
+        return 1
+    print(f"run_dir={result.run_dir}")
+    print(f"checkpoint={result.checkpoint_path}")
+    print(f"best_checkpoint={result.best_checkpoint_path}")
+    print(f"history={result.history_path}")
+    print(f"history_plot={result.history_plot_path}")
+    print(f"summary={result.summary_path}")
+    print(f"report={result.report_path}")
     return 0
 
 

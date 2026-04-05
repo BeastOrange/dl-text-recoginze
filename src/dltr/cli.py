@@ -102,7 +102,7 @@ def build_parser() -> argparse.ArgumentParser:
     train_recognizer.add_argument("--run-id")
     train_recognizer.set_defaults(handler=cmd_train_recognizer)
     train_semantic = train_sub.add_parser("semantic")
-    train_semantic.add_argument("--config", default="configs/semantic/macbert_semantic.yaml")
+    train_semantic.add_argument("--config", default="configs/semantic/char_linear_semantic.yaml")
     train_semantic.add_argument("--run-id")
     train_semantic.set_defaults(handler=cmd_train_semantic)
 
@@ -193,6 +193,7 @@ def build_parser() -> argparse.ArgumentParser:
     report_project = report_sub.add_parser("summarize-project")
     report_project.add_argument("--detection-summary-json", required=True)
     report_project.add_argument("--recognition-summary-json", required=True)
+    report_project.add_argument("--semantic-summary-json")
     report_project.add_argument("--output-dir")
     report_project.set_defaults(handler=cmd_report_summarize_project)
     report_index = report_sub.add_parser("build-index")
