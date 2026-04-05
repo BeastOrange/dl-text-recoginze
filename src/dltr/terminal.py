@@ -1,30 +1,43 @@
 from __future__ import annotations
 
-import shutil
 import sys
-import time
 from pathlib import Path
+
+try:
+    from tqdm import tqdm
+except ModuleNotFoundError:  # pragma: no cover - fallback only when runtime dependency is missing
+    tqdm = None
 
 
 class ProgressBar:
     def __init__(self, total: int, description: str) -> None:
         self.total = max(total, 1)
         self.description = description
-        self.started_at = time.perf_counter()
         self.is_tty = sys.stdout.isatty()
-        self.last_render_width = 0
         self.last_logged_step = -1
+        self.current = 0
+        self.bar = None
+        if tqdm is not None and self.is_tty:
+            self.bar = tqdm(
+                total=self.total,
+                desc=self.description,
+                dynamic_ncols=True,
+                leave=True,
+                file=sys.stdout,
+            )
 
     def update(self, current: int, *, metrics: dict[str, float | int] | None = None) -> None:
         clamped = min(max(current, 0), self.total)
-        line = self._build_line(clamped, metrics or {})
-        if self.is_tty:
-            padded = line.ljust(self.last_render_width)
-            sys.stdout.write(f"\r{padded}")
-            sys.stdout.flush()
-            self.last_render_width = max(self.last_render_width, len(line))
+        if self.bar is not None:
+            delta = clamped - self.current
+            if delta > 0:
+                self.bar.update(delta)
+            self.current = clamped
+            if metrics:
+                self.bar.set_postfix(_stringify_metrics(metrics), refresh=False)
             return
 
+        line = self._build_line(clamped, metrics or {})
         step = int((clamped / self.total) * 20)
         if step == self.last_logged_step and clamped != self.total:
             return
@@ -33,25 +46,18 @@ class ProgressBar:
 
     def finish(self, *, metrics: dict[str, float | int] | None = None) -> None:
         self.update(self.total, metrics=metrics)
-        if self.is_tty:
-            sys.stdout.write("\n")
-            sys.stdout.flush()
+        if self.bar is not None:
+            self.bar.close()
 
     def _build_line(self, current: int, metrics: dict[str, float | int]) -> str:
         percent = current / self.total
         width = 24
-        try:
-            terminal_width = shutil.get_terminal_size((100, 20)).columns
-            width = 32 if terminal_width >= 120 else 24
-        except OSError:
-            width = 24
         filled = int(round(width * percent))
         bar = "#" * filled + "-" * (width - filled)
-        elapsed = time.perf_counter() - self.started_at
         metric_text = _format_metrics(metrics)
         return (
             f"{self.description} [{bar}] {current}/{self.total} "
-            f"{percent * 100:5.1f}% elapsed={elapsed:6.1f}s{metric_text}"
+            f"{percent * 100:5.1f}%{metric_text}"
         )
 
 
@@ -79,3 +85,13 @@ def _format_metrics(metrics: dict[str, float | int]) -> str:
         else:
             parts.append(f"{key}={value}")
     return " " + " ".join(parts)
+
+
+def _stringify_metrics(metrics: dict[str, float | int]) -> dict[str, str]:
+    rendered: dict[str, str] = {}
+    for key, value in metrics.items():
+        if isinstance(value, float):
+            rendered[key] = f"{value:.4f}"
+        else:
+            rendered[key] = str(value)
+    return rendered

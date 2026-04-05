@@ -5,10 +5,10 @@ validation_manifest: data/processed/recognition_splits/val.jsonl
 charset_file: data/processed/charset_zh_mixed.txt
 output_dir: artifacts/checkpoints/recognition/crnn_baseline_4090
 epochs: 80
-batch_size: 640
+batch_size: 256
 image_height: 48
 image_width: 320
-learning_rate: 0.001
+learning_rate: 0.0005
 device: auto
 num_workers: 8
 second_pass:
