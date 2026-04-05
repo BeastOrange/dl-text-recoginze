@@ -1,0 +1,18 @@
+experiment_name: semantic_char_linear_report_smoke
+model_name: char_linear
+label_set:
+  - shop_sign
+  - advertisement
+  - public_notice
+  - traffic_or_warning
+  - service_info
+  - other
+dataset_manifest: data/semantic/report_smoke/train.jsonl
+validation_manifest: data/semantic/report_smoke/val.jsonl
+output_dir: artifacts/checkpoints/semantic/char_linear_report_smoke
+epochs: 1
+batch_size: 16
+learning_rate: 0.001
+max_length: 256
+device: cpu
+num_workers: 0

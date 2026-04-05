@@ -1,0 +1,16 @@
+[
+  {
+    "run_name": "report-smoke",
+    "run_dir": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/artifacts/checkpoints/recognition/crnn_report_smoke/report-smoke",
+    "primary_metric": 0.0,
+    "metrics": {
+      "samples": 8,
+      "word_accuracy": 0.0,
+      "cer": 1.0,
+      "ned": 1.0,
+      "mean_edit_distance": 3.125,
+      "latency_ms": 14.522807250614278
+    },
+    "best_checkpoint_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/artifacts/checkpoints/recognition/crnn_report_smoke/report-smoke/best.pt"
+  }
+]

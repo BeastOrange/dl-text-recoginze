@@ -1,0 +1,15 @@
+experiment_name: crnn_report_smoke
+model_name: crnn
+dataset_manifest: data/processed/report_samples/recognition_splits/train.jsonl
+validation_manifest: data/processed/report_samples/recognition_splits/val.jsonl
+charset_file: data/processed/report_samples/charset_zh_mixed.txt
+output_dir: artifacts/checkpoints/recognition/crnn_report_smoke
+epochs: 1
+batch_size: 16
+image_height: 32
+image_width: 128
+learning_rate: 0.001
+device: cpu
+num_workers: 0
+second_pass:
+  enabled: false

@@ -27,6 +27,7 @@ from dltr.data.preparation import (
 )
 from dltr.data.recognition_crops import extract_recognition_crops_from_detection_manifest
 from dltr.data.reporting import write_eda_markdown_report
+from dltr.data.semantic_preparation import build_semantic_manifests_from_recognition
 from dltr.data.types import DatasetSpec
 from dltr.data.validation import validate_dataset_paths
 from dltr.models.detection import (
@@ -63,6 +64,8 @@ from dltr.semantic import SemanticPrediction, extract_semantic_slots, generate_s
 from dltr.semantic.classes import SEMANTIC_CLASSES, validate_semantic_class
 from dltr.semantic.config import load_semantic_config
 from dltr.semantic.trainer import train_semantic_classifier
+from dltr.visualization.ablation_reports import build_ablation_overview
+from dltr.visualization.hardcase_reports import build_hardcase_overview
 from dltr.visualization.project_summary import build_project_training_summary
 from dltr.visualization.report_index import build_ablation_template, build_training_report_index
 from dltr.visualization.training_reports import aggregate_training_runs
@@ -385,6 +388,23 @@ def cmd_data_prepare_detection(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_data_prepare_semantic(args: argparse.Namespace) -> int:
+    paths = ensure_runtime_dirs()
+    outputs = build_semantic_manifests_from_recognition(
+        recognition_split_dir=_resolve_output_path(
+            args.recognition_split_dir,
+            paths.data_processed / "recognition_splits",
+        ),
+        output_dir=_resolve_output_path(
+            args.output_dir,
+            paths.root / "data" / "semantic" / "cn_scenetext_sem",
+        ),
+    )
+    for split, path in outputs.items():
+        print(f"{split}={path}")
+    return 0
+
+
 def cmd_train_detector(args: argparse.Namespace) -> int:
     config = load_detection_run_config(_resolve_existing_path_arg(args.config))
     try:
@@ -494,6 +514,39 @@ def cmd_report_build_ablation_template(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_report_build_hardcase(args: argparse.Namespace) -> int:
+    outputs = build_hardcase_overview(
+        config_path=_resolve_existing_path_arg(args.config),
+        output_dir=_resolve_output_path(
+            args.output_dir,
+            ProjectPaths.from_root().reports / "hardcase",
+        ),
+        project_root=ProjectPaths.from_root().root,
+    )
+    print(f"markdown={outputs['markdown']}")
+    print(f"png={outputs['png']}")
+    return 0
+
+
+def cmd_report_build_ablation_overview(args: argparse.Namespace) -> int:
+    outputs = build_ablation_overview(
+        detection_summary_json=_resolve_existing_path_arg(args.detection_summary_json),
+        recognition_summary_json=_resolve_existing_path_arg(args.recognition_summary_json),
+        semantic_summary_json=(
+            _resolve_existing_path_arg(args.semantic_summary_json)
+            if args.semantic_summary_json
+            else None
+        ),
+        output_dir=_resolve_output_path(
+            args.output_dir,
+            ProjectPaths.from_root().reports / "ablation",
+        ),
+    )
+    print(f"markdown={outputs['markdown']}")
+    print(f"png={outputs['png']}")
+    return 0
+
+
 def cmd_report_build_all(args: argparse.Namespace) -> int:
     root = ProjectPaths.from_root().root
     output_dir = _resolve_output_path(args.output_dir, ProjectPaths.from_root().reports / "train")
@@ -570,6 +623,13 @@ def cmd_report_build_all(args: argparse.Namespace) -> int:
             output_dir=output_dir,
         )
         generated.extend(project_outputs.values())
+        ablation_outputs = build_ablation_overview(
+            detection_summary_json=detection_json,
+            recognition_summary_json=recognition_json,
+            semantic_summary_json=semantic_json,
+            output_dir=ProjectPaths.from_root().reports / "ablation",
+        )
+        generated.extend(ablation_outputs.values())
 
     generated.append(
         build_training_report_index(
@@ -577,6 +637,14 @@ def cmd_report_build_all(args: argparse.Namespace) -> int:
             output_dir=output_dir,
         )
     )
+    hardcase_config = ProjectPaths.from_root().configs / "data" / "datasets.example.yaml"
+    if hardcase_config.exists():
+        hardcase_outputs = build_hardcase_overview(
+            config_path=hardcase_config,
+            output_dir=ProjectPaths.from_root().reports / "hardcase",
+            project_root=ProjectPaths.from_root().root,
+        )
+        generated.extend(hardcase_outputs.values())
     for path in generated:
         print(path)
     return 0

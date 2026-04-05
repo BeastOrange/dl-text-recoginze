@@ -1,0 +1,24 @@
+experiment_name: det_dbnet_report_smoke
+model_name: dbnet
+dataset_dir: data/raw/rects
+train_manifest: data/processed/report_samples/detection_splits/train.jsonl
+validation_manifest: data/processed/report_samples/detection_splits/val.jsonl
+output_root: artifacts/detection/det_dbnet_report_smoke
+train_split: train
+val_split: val
+image_extensions:
+  - .jpg
+  - .jpeg
+  - .png
+epochs: 1
+batch_size: 8
+learning_rate: 0.001
+image_height: 128
+image_width: 128
+device: cpu
+num_workers: 0
+seed: 42
+hard_case_sampling: false
+multi_scale_augmentation: false
+description: >
+  Smoke run config used to generate real report artifacts quickly.

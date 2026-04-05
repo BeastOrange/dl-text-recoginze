@@ -19,6 +19,7 @@ data/processed/
 data/semantic/
 
 artifacts/checkpoints/
+artifacts/detection/
 artifacts/exports/
 artifacts/cache/
 artifacts/tmp/

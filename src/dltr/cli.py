@@ -9,6 +9,7 @@ from dltr.commands import (
     cmd_data_prepare_detection,
     cmd_data_prepare_recognition,
     cmd_data_prepare_recognition_crops,
+    cmd_data_prepare_semantic,
     cmd_data_stats,
     cmd_data_validate,
     cmd_demo,
@@ -17,8 +18,10 @@ from dltr.commands import (
     cmd_evaluate_recognizer,
     cmd_evaluate_semantic,
     cmd_export_onnx,
+    cmd_report_build_ablation_overview,
     cmd_report_build_ablation_template,
     cmd_report_build_all,
+    cmd_report_build_hardcase,
     cmd_report_build_index,
     cmd_report_summarize_project,
     cmd_report_summarize_training,
@@ -85,6 +88,10 @@ def build_parser() -> argparse.ArgumentParser:
     data_prepare_detection.add_argument("--val-ratio", default=0.1, type=float)
     data_prepare_detection.add_argument("--seed", default=42, type=int)
     data_prepare_detection.set_defaults(handler=cmd_data_prepare_detection)
+    data_prepare_semantic = data_sub.add_parser("prepare-semantic")
+    data_prepare_semantic.add_argument("--recognition-split-dir")
+    data_prepare_semantic.add_argument("--output-dir")
+    data_prepare_semantic.set_defaults(handler=cmd_data_prepare_semantic)
 
     train = top.add_parser("train", help="Training commands.")
     train_sub = train.add_subparsers(dest="command")
@@ -208,6 +215,16 @@ def build_parser() -> argparse.ArgumentParser:
     report_ablation.add_argument("--experiments", nargs="+", required=True)
     report_ablation.add_argument("--output-dir")
     report_ablation.set_defaults(handler=cmd_report_build_ablation_template)
+    report_hardcase = report_sub.add_parser("build-hardcase")
+    report_hardcase.add_argument("--config", default="configs/data/datasets.example.yaml")
+    report_hardcase.add_argument("--output-dir")
+    report_hardcase.set_defaults(handler=cmd_report_build_hardcase)
+    report_ablation_overview = report_sub.add_parser("build-ablation-overview")
+    report_ablation_overview.add_argument("--detection-summary-json", required=True)
+    report_ablation_overview.add_argument("--recognition-summary-json", required=True)
+    report_ablation_overview.add_argument("--semantic-summary-json")
+    report_ablation_overview.add_argument("--output-dir")
+    report_ablation_overview.set_defaults(handler=cmd_report_build_ablation_overview)
 
     return parser
 
