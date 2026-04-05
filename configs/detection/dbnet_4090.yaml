@@ -1,0 +1,25 @@
+experiment_name: det_dbnet_baseline_4090
+model_name: dbnet
+dataset_dir: data/raw/rects
+train_manifest: data/processed/detection_splits/train.jsonl
+validation_manifest: data/processed/detection_splits/val.jsonl
+output_root: artifacts/detection/det_dbnet_baseline_4090
+train_split: train
+val_split: val
+image_extensions:
+  - .jpg
+  - .jpeg
+  - .png
+epochs: 20
+batch_size: 40
+learning_rate: 0.001
+image_height: 512
+image_width: 512
+device: auto
+num_workers: 8
+seed: 42
+hard_case_sampling: false
+multi_scale_augmentation: false
+description: >
+  RTX 4090 oriented detector config.
+  Uses larger images, larger batch size and more workers to improve GPU utilization.

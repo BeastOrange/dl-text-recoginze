@@ -1,0 +1,15 @@
+experiment_name: crnn_baseline_cn_scene_4090
+model_name: crnn
+dataset_manifest: data/processed/recognition_splits/train.jsonl
+validation_manifest: data/processed/recognition_splits/val.jsonl
+charset_file: data/processed/charset_zh_mixed.txt
+output_dir: artifacts/checkpoints/recognition/crnn_baseline_4090
+epochs: 80
+batch_size: 640
+image_height: 48
+image_width: 320
+learning_rate: 0.001
+device: auto
+num_workers: 8
+second_pass:
+  enabled: false
