@@ -32,20 +32,20 @@ def render_streamlit_app() -> None:
     files = discover_report_files(reports_dir)
 
     st.set_page_config(
-        page_title="DLTR Demo",
+        page_title="DLTR 演示系统",
         page_icon="OCR",
         layout="wide",
     )
-    st.title("Chinese Scene-Text Recognition Demo")
-    st.caption("Detection, recognition, semantic analysis, and experiment summaries in one place.")
+    st.title("中文场景文本识别演示系统")
+    st.caption("在一个界面中查看检测、识别、语义分析与实验报告。")
 
     left, right = st.columns((1.2, 1))
 
     with left:
-        st.subheader("Run End-to-End Inference")
-        uploaded = st.file_uploader("Upload a scene image", type=["png", "jpg", "jpeg"])
+        st.subheader("运行端到端推理")
+        uploaded = st.file_uploader("上传场景图片", type=["png", "jpg", "jpeg"])
         if uploaded is not None:
-            if st.button("Run OCR Pipeline", type="primary"):
+            if st.button("运行 OCR 流水线", type="primary"):
                 try:
                     checkpoints = resolve_demo_checkpoints(project_root=root)
                     artifacts = run_uploaded_inference(
@@ -54,56 +54,56 @@ def render_streamlit_app() -> None:
                         detector_checkpoint=checkpoints["detector"],
                         recognizer_checkpoint=checkpoints["recognizer"],
                     )
-                    st.success("End-to-end inference completed.")
-                    st.image(str(artifacts.preview_image_path), caption="Pipeline Preview")
+                    st.success("端到端推理完成。")
+                    st.image(str(artifacts.preview_image_path), caption="推理结果预览")
                     st.json(load_end_to_end_preview(artifacts.json_path))
                 except FileNotFoundError as exc:
                     st.error(str(exc))
 
-        st.subheader("Latest End-to-End Preview")
+        st.subheader("最近一次端到端结果")
         preview = load_end_to_end_preview(reports_dir / "eval" / "end_to_end_preview.json")
         if preview:
             st.json(preview)
         else:
-            st.info("No end-to-end preview JSON found yet.")
+            st.info("暂未发现端到端预览结果。")
 
-        st.subheader("Semantic Demo")
+        st.subheader("语义分析示例")
         demo_report = reports_dir / "demo_assets" / "demo_preview_semantic_eval.md"
         if demo_report.exists():
             st.markdown(demo_report.read_text(encoding="utf-8"))
         else:
-            st.info("No demo semantic report found yet.")
+            st.info("暂未发现语义分析示例报告。")
 
     with right:
-        st.subheader("Training Reports")
+        st.subheader("训练报告")
         if files["train_markdown"]:
             selected = st.selectbox(
-                "Select a training report",
+                "选择训练报告",
                 files["train_markdown"],
                 format_func=lambda path: path.name,
             )
             st.markdown(selected.read_text(encoding="utf-8"))
         else:
-            st.info("No training report markdown files found.")
+            st.info("暂未发现训练报告。")
 
         if files["train_png"]:
             selected_png = st.selectbox(
-                "Select a training chart",
+                "选择训练曲线图",
                 files["train_png"],
                 format_func=lambda path: path.name,
             )
             st.image(str(selected_png), caption=selected_png.name)
 
-        st.subheader("EDA Reports")
+        st.subheader("数据分析报告")
         if files["eda_markdown"]:
             selected_eda = st.selectbox(
-                "Select an EDA report",
+                "选择数据分析报告",
                 files["eda_markdown"],
                 format_func=lambda path: path.name,
             )
             st.markdown(selected_eda.read_text(encoding="utf-8"))
         else:
-            st.info("No EDA report markdown files found.")
+            st.info("暂未发现数据分析报告。")
 
 
 if __name__ == "__main__":
