@@ -52,7 +52,11 @@ from dltr.models.recognition.refinement import (
     should_apply_second_pass,
 )
 from dltr.models.recognition.trainer import train_crnn_recognizer
-from dltr.pipeline.checkpoints import discover_latest_run_dir, resolve_best_checkpoint
+from dltr.pipeline.checkpoints import (
+    discover_all_run_dirs,
+    discover_latest_run_dir,
+    resolve_best_checkpoint,
+)
 from dltr.pipeline.end_to_end import run_end_to_end_pipeline
 from dltr.project import ProjectPaths, ensure_runtime_dirs
 from dltr.semantic import SemanticPrediction, extract_semantic_slots, generate_semantic_report
@@ -479,6 +483,73 @@ def cmd_report_build_ablation_template(args: argparse.Namespace) -> int:
         experiments=args.experiments,
     )
     print(f"markdown={output_path}")
+    return 0
+
+
+def cmd_report_build_all(args: argparse.Namespace) -> int:
+    root = ProjectPaths.from_root().root
+    output_dir = _resolve_output_path(args.output_dir, ProjectPaths.from_root().reports / "train")
+
+    detection_root = root / "artifacts" / "detection"
+    recognition_root = root / "artifacts" / "checkpoints" / "recognition"
+
+    detection_runs = discover_all_run_dirs(detection_root) if detection_root.exists() else []
+    recognition_runs = discover_all_run_dirs(recognition_root) if recognition_root.exists() else []
+
+    generated: list[Path] = []
+    detection_json: Path | None = None
+    recognition_json: Path | None = None
+
+    if detection_runs:
+        outputs = aggregate_training_runs(
+            run_dirs=detection_runs,
+            output_dir=output_dir,
+            task_name="detection",
+            primary_metric="hmean",
+        )
+        detection_json = outputs["json"]
+        generated.extend(outputs.values())
+        generated.append(
+            build_ablation_template(
+                output_dir=output_dir,
+                task_name="detection",
+                experiments=[run.name for run in detection_runs],
+            )
+        )
+
+    if recognition_runs:
+        outputs = aggregate_training_runs(
+            run_dirs=recognition_runs,
+            output_dir=output_dir,
+            task_name="recognition",
+            primary_metric="word_accuracy",
+        )
+        recognition_json = outputs["json"]
+        generated.extend(outputs.values())
+        generated.append(
+            build_ablation_template(
+                output_dir=output_dir,
+                task_name="recognition",
+                experiments=[run.name for run in recognition_runs],
+            )
+        )
+
+    if detection_json and recognition_json:
+        project_outputs = build_project_training_summary(
+            detection_summary_json=detection_json,
+            recognition_summary_json=recognition_json,
+            output_dir=output_dir,
+        )
+        generated.extend(project_outputs.values())
+
+    generated.append(
+        build_training_report_index(
+            train_reports_dir=output_dir,
+            output_dir=output_dir,
+        )
+    )
+    for path in generated:
+        print(path)
     return 0
 
 

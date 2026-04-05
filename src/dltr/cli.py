@@ -18,6 +18,7 @@ from dltr.commands import (
     cmd_evaluate_semantic,
     cmd_export_onnx,
     cmd_report_build_ablation_template,
+    cmd_report_build_all,
     cmd_report_build_index,
     cmd_report_summarize_project,
     cmd_report_summarize_training,
@@ -198,6 +199,9 @@ def build_parser() -> argparse.ArgumentParser:
     report_index.add_argument("--train-reports-dir", required=True)
     report_index.add_argument("--output-dir")
     report_index.set_defaults(handler=cmd_report_build_index)
+    report_all = report_sub.add_parser("build-all")
+    report_all.add_argument("--output-dir")
+    report_all.set_defaults(handler=cmd_report_build_all)
     report_ablation = report_sub.add_parser("build-ablation-template")
     report_ablation.add_argument("--task-name", required=True)
     report_ablation.add_argument("--experiments", nargs="+", required=True)

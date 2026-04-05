@@ -12,6 +12,7 @@ def discover_report_files(reports_dir: Path) -> dict[str, list[Path]]:
     eda_dir = reports_dir / "eda"
     return {
         "train_markdown": sorted(train_dir.glob("*.md")) if train_dir.exists() else [],
+        "train_png": sorted(train_dir.glob("*.png")) if train_dir.exists() else [],
         "eval_json": sorted(eval_dir.glob("*.json")) if eval_dir.exists() else [],
         "eda_markdown": sorted(eda_dir.glob("*.md")) if eda_dir.exists() else [],
     }
@@ -84,6 +85,14 @@ def render_streamlit_app() -> None:
             st.markdown(selected.read_text(encoding="utf-8"))
         else:
             st.info("No training report markdown files found.")
+
+        if files["train_png"]:
+            selected_png = st.selectbox(
+                "Select a training chart",
+                files["train_png"],
+                format_func=lambda path: path.name,
+            )
+            st.image(str(selected_png), caption=selected_png.name)
 
         st.subheader("EDA Reports")
         if files["eda_markdown"]:

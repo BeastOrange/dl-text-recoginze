@@ -12,12 +12,14 @@ def test_discover_report_files_collects_expected_sections(tmp_path: Path) -> Non
         "# project\n",
         encoding="utf-8",
     )
+    (reports_dir / "train" / "recognition_summary.png").write_bytes(b"png")
     (reports_dir / "eval" / "end_to_end_result.json").write_text("{}", encoding="utf-8")
     (reports_dir / "eda" / "rects_shopsign_eda.md").write_text("# eda\n", encoding="utf-8")
 
     files = discover_report_files(reports_dir)
 
     assert "train_markdown" in files
+    assert "train_png" in files
     assert "eval_json" in files
     assert "eda_markdown" in files
 

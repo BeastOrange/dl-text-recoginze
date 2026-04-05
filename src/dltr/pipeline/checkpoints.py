@@ -26,12 +26,16 @@ def resolve_best_checkpoint(run_dir: Path) -> Path:
 
 
 def discover_latest_run_dir(root_dir: Path) -> Path:
-    candidates = [
-        summary_path.parent
-        for summary_path in root_dir.rglob("training_summary.json")
-    ]
+    candidates = discover_all_run_dirs(root_dir)
     if not candidates:
         raise FileNotFoundError(
             f"No run directories with training_summary.json found in {root_dir}"
         )
     return sorted(candidates, key=lambda item: item.name)[-1]
+
+
+def discover_all_run_dirs(root_dir: Path) -> list[Path]:
+    return [
+        summary_path.parent
+        for summary_path in root_dir.rglob("training_summary.json")
+    ]
