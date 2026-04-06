@@ -25,7 +25,6 @@ def build_hardcase_overview(
         data_raw=project_root / "data" / "raw",
         data_interim=project_root / "data" / "interim",
         data_processed=project_root / "data" / "processed",
-        data_semantic=project_root / "data" / "semantic",
         reports=project_root / "reports",
         artifacts=project_root / "artifacts",
         change_records=project_root / "change_records",

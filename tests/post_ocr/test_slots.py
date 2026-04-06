@@ -1,9 +1,9 @@
-from dltr.semantic.slots import extract_semantic_slots
+from dltr.post_ocr.slots import extract_post_ocr_slots
 
 
-def test_extract_semantic_slots_parses_chinese_text() -> None:
+def test_extract_post_ocr_slots_parses_chinese_text() -> None:
     text = "地址：中山路88号，电话13800138000，营业时间09:00-18:00，特价¥29.9元，严禁烟火。"
-    slots = extract_semantic_slots(text)
+    slots = extract_post_ocr_slots(text)
 
     assert "13800138000" in slots.phone
     assert any(item.startswith("¥29.9") for item in slots.price)

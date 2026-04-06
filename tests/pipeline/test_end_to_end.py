@@ -1,12 +1,15 @@
 import json
 from pathlib import Path
 
+import cv2
+import numpy as np
+
 from dltr.pipeline.end_to_end import (
     EndToEndLineResult,
     EndToEndPipelineArtifacts,
     run_end_to_end_pipeline,
 )
-from dltr.semantic.slots import extract_semantic_slots
+from dltr.post_ocr.slots import extract_post_ocr_slots
 
 
 def test_run_end_to_end_pipeline_writes_outputs(monkeypatch, tmp_path: Path) -> None:
@@ -24,7 +27,7 @@ def test_run_end_to_end_pipeline_writes_outputs(monkeypatch, tmp_path: Path) -> 
             "lines": [
                 {
                     "text": "营业时间 09:00-21:00",
-                    "semantic_class": "service_info",
+                    "analysis_label": "service_info",
                 }
             ],
         }
@@ -42,9 +45,9 @@ def test_run_end_to_end_pipeline_writes_outputs(monkeypatch, tmp_path: Path) -> 
                     polygon=[10, 10, 100, 10, 100, 40, 10, 40],
                     text="营业时间 09:00-21:00",
                     recognition_confidence=0.75,
-                    semantic_class="service_info",
-                    semantic_confidence=0.8,
-                    slots=extract_semantic_slots("营业时间 09:00-21:00"),
+                    analysis_label="service_info",
+                    analysis_confidence=0.8,
+                    slots=extract_post_ocr_slots("营业时间 09:00-21:00"),
                 )
             ],
         )
@@ -64,4 +67,39 @@ def test_run_end_to_end_pipeline_writes_outputs(monkeypatch, tmp_path: Path) -> 
     assert artifacts.json_path.exists()
     assert artifacts.markdown_path.exists()
     assert artifacts.preview_image_path.exists()
-    assert artifacts.line_results[0].semantic_class == "service_info"
+    assert artifacts.line_results[0].analysis_label == "service_info"
+
+
+def test_run_end_to_end_pipeline_applies_real_second_pass(monkeypatch, tmp_path: Path) -> None:
+    image_path = tmp_path / "scene.png"
+    image = np.full((60, 160, 3), 255, dtype=np.uint8)
+    cv2.imwrite(str(image_path), image)
+
+    class _Detection:
+        polygon = [10, 10, 150, 10, 150, 40, 10, 40]
+
+    calls: list[Path] = []
+
+    def fake_predict_text_regions(**_: object) -> list[_Detection]:
+        return [_Detection()]
+
+    def fake_recognize_crop(*, image_path: Path, checkpoint_path: Path):  # noqa: ARG001
+        calls.append(image_path)
+        if len(calls) == 1:
+            return type("Prediction", (), {"text": "营", "confidence": 0.42})()
+        return type("Prediction", (), {"text": "营业时间", "confidence": 0.91})()
+
+    monkeypatch.setattr("dltr.pipeline.end_to_end.predict_text_regions", fake_predict_text_regions)
+    monkeypatch.setattr("dltr.pipeline.end_to_end.recognize_crop", fake_recognize_crop)
+
+    artifacts = run_end_to_end_pipeline(
+        image_path=image_path,
+        output_dir=tmp_path / "output",
+        detector_checkpoint=tmp_path / "det.pt",
+        recognizer_checkpoint=tmp_path / "rec.pt",
+    )
+
+    payload = json.loads(artifacts.json_path.read_text(encoding="utf-8"))
+    assert len(calls) == 2
+    assert payload["lines"][0]["text"] == "营业时间"
+    assert payload["lines"][0]["second_pass_applied"] is True

@@ -158,8 +158,8 @@
 
 说明：
 
-- `data/semantic/` 仅保留为历史实验或扩展模块目录
-- 不再把 `data/semantic/` 写成主线数据依赖
+- 识别后规则分析不再依赖独立训练数据目录
+- 所有扩展仅基于 OCR 结果做规则抽取与展示
 
 ## 6. 创新点设计
 
@@ -339,9 +339,8 @@
 
 扩展 CLI：
 
-- `uv run python scripts/run_dltr.py data prepare-semantic`
-- `uv run python scripts/run_dltr.py train semantic`
-- `uv run python scripts/run_dltr.py evaluate semantic`
+- `uv run python scripts/run_dltr.py train end2end`
+- `uv run python scripts/run_dltr.py evaluate end2end`
 
 说明：
 

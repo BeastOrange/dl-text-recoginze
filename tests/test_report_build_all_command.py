@@ -10,12 +10,8 @@ def test_report_build_all_command_generates_report_suite(tmp_path, monkeypatch) 
     rec_run = (
         tmp_path / "artifacts" / "checkpoints" / "recognition" / "rec_base" / "20260102-000000"
     )
-    sem_run = (
-        tmp_path / "artifacts" / "checkpoints" / "semantic" / "sem_base" / "20260103-000000"
-    )
     det_run.mkdir(parents=True, exist_ok=True)
     rec_run.mkdir(parents=True, exist_ok=True)
-    sem_run.mkdir(parents=True, exist_ok=True)
 
     (det_run / "training_summary.json").write_text(
         json.dumps(
@@ -37,16 +33,6 @@ def test_report_build_all_command_generates_report_suite(tmp_path, monkeypatch) 
         ),
         encoding="utf-8",
     )
-    (sem_run / "training_summary.json").write_text(
-        json.dumps(
-            {
-                "metrics": {"accuracy": 0.71, "macro_f1": 0.69},
-                "best_checkpoint_path": str(sem_run / "best.pt"),
-            },
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
-    )
 
     monkeypatch.chdir(tmp_path)
     exit_code = main(["report", "build-all", "--output-dir", "reports/train"])
@@ -58,7 +44,3 @@ def test_report_build_all_command_generates_report_suite(tmp_path, monkeypatch) 
     assert (tmp_path / "reports" / "train" / "index.md").exists()
     assert (tmp_path / "reports" / "train" / "detection_ablation_template.md").exists()
     assert (tmp_path / "reports" / "train" / "recognition_ablation_template.md").exists()
-    assert (tmp_path / "reports" / "extensions" / "semantic_summary.json").exists()
-    assert (
-        tmp_path / "reports" / "extensions" / "semantic_extension_ablation_template.md"
-    ).exists()

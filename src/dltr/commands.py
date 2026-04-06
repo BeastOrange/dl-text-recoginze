@@ -4,12 +4,10 @@ import argparse
 import json
 import os
 import subprocess
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
-import yaml
 
 from dltr.data.config import load_data_config
 from dltr.data.detection_preparation import (
@@ -27,7 +25,6 @@ from dltr.data.preparation import (
 )
 from dltr.data.recognition_crops import extract_recognition_crops_from_detection_manifest
 from dltr.data.reporting import write_eda_markdown_report
-from dltr.data.semantic_preparation import build_semantic_manifests_from_recognition
 from dltr.data.types import DatasetSpec
 from dltr.data.validation import validate_dataset_paths
 from dltr.models.detection import (
@@ -52,63 +49,27 @@ from dltr.models.recognition.refinement import (
     second_pass_reasons,
     should_apply_second_pass,
 )
-from dltr.models.recognition.trainer import train_crnn_recognizer
+from dltr.models.recognition.trainer import train_crnn_recognizer, train_transformer_recognizer
 from dltr.pipeline.checkpoints import (
     discover_all_run_dirs,
     discover_latest_run_dir,
     resolve_best_checkpoint,
 )
 from dltr.pipeline.end_to_end import run_end_to_end_pipeline
+from dltr.post_ocr import (
+    PostOCRPrediction,
+    analyze_scene_text,
+    extract_post_ocr_slots,
+    generate_post_ocr_report,
+    validate_analysis_label,
+)
 from dltr.project import ProjectPaths, ensure_runtime_dirs
-from dltr.semantic import SemanticPrediction, extract_semantic_slots, generate_semantic_report
-from dltr.semantic.classes import SEMANTIC_CLASSES, validate_semantic_class
-from dltr.semantic.config import load_semantic_config
-from dltr.semantic.trainer import train_semantic_classifier
 from dltr.terminal import print_artifact_summary, print_stage_header
 from dltr.visualization.ablation_reports import build_ablation_overview
 from dltr.visualization.hardcase_reports import build_hardcase_overview
 from dltr.visualization.project_summary import build_project_training_summary
 from dltr.visualization.report_index import build_ablation_template, build_training_report_index
 from dltr.visualization.training_reports import aggregate_training_runs
-
-
-@dataclass(frozen=True)
-class SemanticTrainConfig:
-    experiment_name: str
-    model_name: str
-    label_set: list[str]
-    dataset_manifest: str
-    validation_manifest: str
-    output_dir: str
-    epochs: int
-    batch_size: int
-    learning_rate: float
-    max_length: int
-
-    def validate(self) -> None:
-        if not self.experiment_name.strip():
-            raise ValueError("experiment_name must be non-empty")
-        if not self.model_name.strip():
-            raise ValueError("model_name must be non-empty")
-        if not self.label_set:
-            raise ValueError("label_set must not be empty")
-        invalid = sorted({label for label in self.label_set if label not in SEMANTIC_CLASSES})
-        if invalid:
-            raise ValueError(f"Unsupported semantic labels: {', '.join(invalid)}")
-        if not self.dataset_manifest.strip():
-            raise ValueError("dataset_manifest must be non-empty")
-        if not self.validation_manifest.strip():
-            raise ValueError("validation_manifest must be non-empty")
-        if not self.output_dir.strip():
-            raise ValueError("output_dir must be non-empty")
-        if self.epochs <= 0:
-            raise ValueError("epochs must be > 0")
-        if self.batch_size <= 0:
-            raise ValueError("batch_size must be > 0")
-        if self.learning_rate <= 0:
-            raise ValueError("learning_rate must be > 0")
-        if self.max_length <= 0:
-            raise ValueError("max_length must be > 0")
 
 
 def cmd_data_validate(args: argparse.Namespace) -> int:
@@ -419,31 +380,6 @@ def cmd_data_prepare_detection(args: argparse.Namespace) -> int:
     )
     return 0
 
-
-def cmd_data_prepare_semantic(args: argparse.Namespace) -> int:
-    paths = ensure_runtime_dirs()
-    print_stage_header("开始构建语义数据集")
-    outputs = build_semantic_manifests_from_recognition(
-        recognition_split_dir=_resolve_output_path(
-            args.recognition_split_dir,
-            paths.data_processed / "recognition_splits",
-        ),
-        output_dir=_resolve_output_path(
-            args.output_dir,
-            paths.root / "data" / "semantic" / "cn_scenetext_sem",
-        ),
-    )
-    print_artifact_summary(
-        "语义数据准备完成，已生成以下产物：",
-        [
-            ("训练集", outputs["train"]),
-            ("验证集", outputs["val"]),
-            ("测试集", outputs["test"]),
-        ],
-    )
-    return 0
-
-
 def cmd_train_detector(args: argparse.Namespace) -> int:
     config_path = _resolve_existing_path_arg(args.config)
     config = load_detection_run_config(config_path)
@@ -486,7 +422,11 @@ def cmd_train_detector(args: argparse.Namespace) -> int:
 
 def cmd_train_recognizer(args: argparse.Namespace) -> int:
     config_path = _resolve_existing_path_arg(args.config)
-    config = load_recognition_config(config_path)
+    try:
+        config = load_recognition_config(config_path)
+    except ValueError as exc:
+        print(str(exc))
+        return 1
     print_stage_header(
         "开始识别训练",
         [
@@ -497,18 +437,22 @@ def cmd_train_recognizer(args: argparse.Namespace) -> int:
             ("图像尺寸", f"{config.image_width}x{config.image_height}"),
         ],
     )
-    if config.model_name != "crnn":
-        print(
-            "当前仓库还没有接入 TransOCR 的真实训练循环。"
-            "请先使用 CRNN 配置训练，或后续再接入 Hugging Face 权重。"
-        )
-        return 1
     try:
-        result = train_crnn_recognizer(
-            config,
-            paths=ensure_runtime_dirs(),
-            run_id=args.run_id,
-        )
+        if config.model_name == "crnn":
+            result = train_crnn_recognizer(
+                config,
+                paths=ensure_runtime_dirs(),
+                run_id=args.run_id,
+            )
+        elif config.model_name == "transformer":
+            result = train_transformer_recognizer(
+                config,
+                paths=ensure_runtime_dirs(),
+                run_id=args.run_id,
+            )
+        else:
+            print(f"Unsupported recognition model: {config.model_name}")
+            return 1
     except RuntimeError as exc:
         print(str(exc))
         return 1
@@ -522,6 +466,118 @@ def cmd_train_recognizer(args: argparse.Namespace) -> int:
             ("训练曲线图", result.history_plot_path),
             ("训练摘要", result.summary_path),
             ("评估报告", result.report_path),
+        ],
+    )
+    return 0
+
+
+def cmd_train_end2end(args: argparse.Namespace) -> int:
+    detector_config_path = _resolve_existing_path_arg(args.detector_config)
+    recognizer_config_path = _resolve_existing_path_arg(args.recognizer_config)
+    detector_config = load_detection_run_config(detector_config_path)
+    try:
+        recognizer_config = load_recognition_config(recognizer_config_path)
+    except ValueError as exc:
+        print(str(exc))
+        return 1
+
+    resolved_run_id = args.run_id or datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+    output_dir = _resolve_output_path(
+        args.output_dir,
+        ProjectPaths.from_root().artifacts / "end2end" / resolved_run_id,
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+    print_stage_header(
+        "开始端到端协同训练",
+        [
+            ("运行编号", resolved_run_id),
+            ("检测配置", detector_config_path),
+            ("识别配置", recognizer_config_path),
+            ("识别模型", recognizer_config.model_name),
+        ],
+    )
+
+    detector_result = train_dbnet_detector(
+        detector_config,
+        paths=ensure_runtime_dirs(),
+        run_id=args.run_id,
+    )
+    if recognizer_config.model_name == "crnn":
+        recognizer_result = train_crnn_recognizer(
+            recognizer_config,
+            paths=ensure_runtime_dirs(),
+            run_id=args.run_id,
+        )
+    elif recognizer_config.model_name == "transformer":
+        recognizer_result = train_transformer_recognizer(
+            recognizer_config,
+            paths=ensure_runtime_dirs(),
+            run_id=args.run_id,
+        )
+    else:
+        print(f"Unsupported recognition model: {recognizer_config.model_name}")
+        return 1
+
+    summary_payload = {
+        "run_id": resolved_run_id,
+        "detector": {
+            "config_path": str(detector_config_path),
+            "run_dir": str(detector_result.context.run_dir),
+            "best_checkpoint_path": str(detector_result.best_checkpoint_path),
+            "metrics": _read_metrics_from_summary(detector_result.summary_path),
+        },
+        "recognizer": {
+            "config_path": str(recognizer_config_path),
+            "run_dir": str(recognizer_result.run_dir),
+            "best_checkpoint_path": str(recognizer_result.best_checkpoint_path),
+            "metrics": _read_metrics_from_summary(recognizer_result.summary_path),
+            "model_name": recognizer_config.model_name,
+        },
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+    summary_json = output_dir / "training_summary.json"
+    summary_markdown = output_dir / "training_summary.md"
+    summary_json.write_text(
+        json.dumps(summary_payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    summary_markdown.write_text(
+        "\n".join(
+            [
+                "# End-to-End Training Summary",
+                "",
+                f"- Run ID: `{resolved_run_id}`",
+                f"- Detector Run: `{detector_result.context.run_dir}`",
+                f"- Recognizer Run: `{recognizer_result.run_dir}`",
+                "",
+                "## Detector",
+                "",
+            ]
+            + [
+                f"- `{key}`: `{value}`"
+                for key, value in summary_payload["detector"]["metrics"].items()
+            ]
+            + [
+                "",
+                "## Recognizer",
+                "",
+                f"- Model: `{recognizer_config.model_name}`",
+            ]
+            + [
+                f"- `{key}`: `{value}`"
+                for key, value in summary_payload["recognizer"]["metrics"].items()
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    print_artifact_summary(
+        "端到端协同训练完成，已生成以下产物：",
+        [
+            ("检测运行目录", detector_result.context.run_dir),
+            ("识别运行目录", recognizer_result.run_dir),
+            ("系统摘要 JSON", summary_json),
+            ("系统摘要 Markdown", summary_markdown),
         ],
     )
     return 0
@@ -545,16 +601,10 @@ def cmd_report_summarize_training(args: argparse.Namespace) -> int:
 def cmd_report_summarize_project(args: argparse.Namespace) -> int:
     detection_json = _resolve_existing_path_arg(args.detection_summary_json)
     recognition_json = _resolve_existing_path_arg(args.recognition_summary_json)
-    semantic_json = (
-        _resolve_existing_path_arg(args.semantic_summary_json)
-        if args.semantic_summary_json
-        else None
-    )
     output_dir = _resolve_output_path(args.output_dir, ProjectPaths.from_root().reports / "train")
     outputs = build_project_training_summary(
         detection_summary_json=detection_json,
         recognition_summary_json=recognition_json,
-        semantic_summary_json=semantic_json,
         output_dir=output_dir,
     )
     print(f"json={outputs['json']}")
@@ -603,11 +653,6 @@ def cmd_report_build_ablation_overview(args: argparse.Namespace) -> int:
     outputs = build_ablation_overview(
         detection_summary_json=_resolve_existing_path_arg(args.detection_summary_json),
         recognition_summary_json=_resolve_existing_path_arg(args.recognition_summary_json),
-        semantic_summary_json=(
-            _resolve_existing_path_arg(args.semantic_summary_json)
-            if args.semantic_summary_json
-            else None
-        ),
         output_dir=_resolve_output_path(
             args.output_dir,
             ProjectPaths.from_root().reports / "ablation",
@@ -621,21 +666,17 @@ def cmd_report_build_ablation_overview(args: argparse.Namespace) -> int:
 def cmd_report_build_all(args: argparse.Namespace) -> int:
     root = ProjectPaths.from_root().root
     output_dir = _resolve_output_path(args.output_dir, ProjectPaths.from_root().reports / "train")
-    extension_dir = ProjectPaths.from_root().reports / "extensions"
     print_stage_header("开始构建训练汇总报告", [("输出目录", output_dir)])
 
     detection_root = root / "artifacts" / "detection"
     recognition_root = root / "artifacts" / "checkpoints" / "recognition"
-    semantic_root = root / "artifacts" / "checkpoints" / "semantic"
 
     detection_runs = discover_all_run_dirs(detection_root) if detection_root.exists() else []
     recognition_runs = discover_all_run_dirs(recognition_root) if recognition_root.exists() else []
-    semantic_runs = discover_all_run_dirs(semantic_root) if semantic_root.exists() else []
 
     generated: list[Path] = []
     detection_json: Path | None = None
     recognition_json: Path | None = None
-    semantic_json: Path | None = None
 
     if detection_runs:
         outputs = aggregate_training_runs(
@@ -671,35 +712,16 @@ def cmd_report_build_all(args: argparse.Namespace) -> int:
             )
         )
 
-    if semantic_runs:
-        outputs = aggregate_training_runs(
-            run_dirs=semantic_runs,
-            output_dir=extension_dir,
-            task_name="semantic",
-            primary_metric="accuracy",
-        )
-        semantic_json = outputs["json"]
-        generated.extend(outputs.values())
-        generated.append(
-            build_ablation_template(
-                output_dir=extension_dir,
-                task_name="semantic_extension",
-                experiments=[run.name for run in semantic_runs],
-            )
-        )
-
     if detection_json and recognition_json:
         project_outputs = build_project_training_summary(
             detection_summary_json=detection_json,
             recognition_summary_json=recognition_json,
-            semantic_summary_json=semantic_json,
             output_dir=output_dir,
         )
         generated.extend(project_outputs.values())
         ablation_outputs = build_ablation_overview(
             detection_summary_json=detection_json,
             recognition_summary_json=recognition_json,
-            semantic_summary_json=semantic_json,
             output_dir=ProjectPaths.from_root().reports / "ablation",
         )
         generated.extend(ablation_outputs.values())
@@ -721,49 +743,6 @@ def cmd_report_build_all(args: argparse.Namespace) -> int:
     print_artifact_summary(
         "训练汇总报告构建完成，已生成以下产物：",
         [(f"文件 {index + 1}", path) for index, path in enumerate(generated)],
-    )
-    return 0
-
-
-def cmd_train_semantic(args: argparse.Namespace) -> int:
-    config_path = _resolve_existing_path_arg(args.config)
-    config = load_semantic_config(config_path)
-    print_stage_header(
-        "开始语义训练",
-        [
-            ("配置文件", config_path),
-            ("实验名称", config.experiment_name),
-            ("训练轮数", config.epochs),
-            ("批大小", config.batch_size),
-            ("类别数", len(config.label_set)),
-        ],
-    )
-    if config.model_name != "char_linear":
-        print(
-            "当前仓库还没有接入 MacBERT 的真实训练循环。"
-            "请先使用 char_linear 配置训练，或后续再接入 Hugging Face 权重。"
-        )
-        return 1
-    try:
-        result = train_semantic_classifier(
-            config,
-            paths=ensure_runtime_dirs(),
-            run_id=args.run_id,
-        )
-    except RuntimeError as exc:
-        print(str(exc))
-        return 1
-    print_artifact_summary(
-        "语义训练完成，已生成以下产物：",
-        [
-            ("运行目录", result.run_dir),
-            ("最新权重", result.checkpoint_path),
-            ("最佳权重", result.best_checkpoint_path),
-            ("训练历史", result.history_path),
-            ("训练曲线图", result.history_plot_path),
-            ("训练摘要", result.summary_path),
-            ("评估报告", result.report_path),
-        ],
     )
     return 0
 
@@ -809,19 +788,6 @@ def cmd_evaluate_recognizer(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_evaluate_semantic(args: argparse.Namespace) -> int:
-    predictions_path = _resolve_existing_path_arg(args.predictions_jsonl)
-    predictions = _load_semantic_predictions(predictions_path, args.default_class)
-    output_dir = _resolve_output_path(args.output_dir, ProjectPaths.from_root().reports / "eval")
-    report_path = generate_semantic_report(
-        run_name=args.run_name,
-        predictions=predictions,
-        output_dir=output_dir,
-    )
-    print(f"Semantic evaluation report written to {report_path}")
-    return 0
-
-
 def cmd_evaluate_end2end(args: argparse.Namespace) -> int:
     if args.image:
         detector_checkpoint = _resolve_end_to_end_checkpoint(
@@ -861,7 +827,8 @@ def cmd_evaluate_end2end(args: argparse.Namespace) -> int:
         aspect_ratio=args.aspect_ratio,
     )
     reasons = second_pass_reasons(args.confidence, args.text, quality, policy)
-    slots = extract_semantic_slots(args.text)
+    slots = extract_post_ocr_slots(args.text)
+    analysis = analyze_scene_text(args.text)
     output_path = _resolve_output_path(
         args.output,
         paths.reports / "eval" / "end2end_preview.json",
@@ -878,7 +845,8 @@ def cmd_evaluate_end2end(args: argparse.Namespace) -> int:
         ),
         "reasons": reasons,
         "quality": asdict(quality),
-        "semantic_class": validate_semantic_class(args.semantic_class),
+        "analysis_label": validate_analysis_label(args.analysis_label or analysis.label),
+        "analysis_confidence": analysis.confidence,
         "slots": asdict(slots),
         "generated_at": datetime.now(UTC).isoformat(),
     }
@@ -925,15 +893,16 @@ def cmd_demo(args: argparse.Namespace) -> int:
         return 0
 
     paths = ensure_runtime_dirs()
-    prediction = SemanticPrediction(
+    analysis = analyze_scene_text(args.text)
+    prediction = PostOCRPrediction(
         source_id=args.source_id,
         text=args.text,
-        semantic_class=validate_semantic_class(args.semantic_class),
+        analysis_label=validate_analysis_label(args.analysis_label or analysis.label),
         confidence=args.confidence,
-        slots=extract_semantic_slots(args.text),
+        slots=extract_post_ocr_slots(args.text),
     )
-    output_dir = _resolve_output_path(args.output_dir, paths.reports / "demo_assets" / "generated")
-    report_path = generate_semantic_report(
+    output_dir = _resolve_output_path(args.output_dir, paths.reports / "demo_assets")
+    report_path = generate_post_ocr_report(
         run_name="demo_preview",
         predictions=[prediction],
         output_dir=output_dir,
@@ -1015,6 +984,16 @@ def _find_dataset_spec(specs: list[DatasetSpec], name: str) -> DatasetSpec:
     raise ValueError(f"Unknown dataset '{name}'. Available: {available}")
 
 
+def _read_metrics_from_summary(summary_path: Path) -> dict[str, float]:
+    if not summary_path.exists():
+        return {}
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    metrics = payload.get("metrics", {})
+    if not isinstance(metrics, dict):
+        return {}
+    return {str(key): float(value) for key, value in metrics.items()}
+
+
 def _prepare_recognition_run(
     paths: ProjectPaths,
     config: RecognitionExperimentConfig,
@@ -1074,119 +1053,6 @@ def _write_recognition_train_plan(
         encoding="utf-8",
     )
     return {"json": json_path, "markdown": markdown_path}
-
-
-def _load_semantic_train_config(config_path: Path) -> SemanticTrainConfig:
-    payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
-    if not isinstance(payload, dict):
-        raise ValueError("Semantic config must be a YAML mapping")
-    config = SemanticTrainConfig(
-        experiment_name=str(payload.get("experiment_name", "")).strip(),
-        model_name=str(payload.get("model_name", "")).strip(),
-        label_set=[str(item).strip() for item in payload.get("label_set", [])],
-        dataset_manifest=str(payload.get("dataset_manifest", "")).strip(),
-        validation_manifest=str(payload.get("validation_manifest", "")).strip(),
-        output_dir=str(payload.get("output_dir", "")).strip(),
-        epochs=int(payload.get("epochs", 0)),
-        batch_size=int(payload.get("batch_size", 0)),
-        learning_rate=float(payload.get("learning_rate", 0.0)),
-        max_length=int(payload.get("max_length", 0)),
-    )
-    config.validate()
-    return config
-
-
-def _prepare_semantic_run(
-    paths: ProjectPaths,
-    config: SemanticTrainConfig,
-    run_id: str | None,
-) -> Path:
-    dataset_manifest = (paths.root / config.dataset_manifest).resolve()
-    validation_manifest = (paths.root / config.validation_manifest).resolve()
-    if not dataset_manifest.exists():
-        raise FileNotFoundError(f"Semantic dataset manifest not found: {dataset_manifest}")
-    if not validation_manifest.exists():
-        raise FileNotFoundError(f"Semantic validation manifest not found: {validation_manifest}")
-
-    output_root = (paths.root / config.output_dir).resolve()
-    resolved_run_id = run_id or datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-    run_dir = output_root / resolved_run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-    return run_dir
-
-
-def _write_semantic_train_plan(
-    run_dir: Path,
-    config: SemanticTrainConfig,
-) -> dict[str, Path]:
-    payload = {
-        "experiment_name": config.experiment_name,
-        "model_name": config.model_name,
-        "label_set": config.label_set,
-        "dataset_manifest": config.dataset_manifest,
-        "validation_manifest": config.validation_manifest,
-        "output_dir": str(run_dir),
-        "epochs": config.epochs,
-        "batch_size": config.batch_size,
-        "learning_rate": config.learning_rate,
-        "max_length": config.max_length,
-        "generated_at": datetime.now(UTC).isoformat(),
-    }
-    json_path = run_dir / "train_plan.json"
-    markdown_path = run_dir / "train_plan.md"
-    json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    markdown_path.write_text(
-        "\n".join(
-            [
-                f"# Semantic Training Plan: {config.experiment_name}",
-                "",
-                f"- Model: `{config.model_name}`",
-                f"- Labels: `{', '.join(config.label_set)}`",
-                f"- Train Manifest: `{config.dataset_manifest}`",
-                f"- Validation Manifest: `{config.validation_manifest}`",
-                f"- Epochs: `{config.epochs}`",
-                f"- Batch Size: `{config.batch_size}`",
-                f"- Learning Rate: `{config.learning_rate}`",
-                f"- Max Length: `{config.max_length}`",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    return {"json": json_path, "markdown": markdown_path}
-
-
-def _load_semantic_predictions(
-    predictions_path: Path,
-    default_class: str,
-) -> list[SemanticPrediction]:
-    resolved_default_class = validate_semantic_class(default_class)
-    predictions: list[SemanticPrediction] = []
-    for line_number, raw_line in enumerate(
-        predictions_path.read_text(encoding="utf-8").splitlines(),
-        start=1,
-    ):
-        if not raw_line.strip():
-            continue
-        payload = json.loads(raw_line)
-        text = str(payload.get("text", "")).strip()
-        if not text:
-            raise ValueError(f"Line {line_number} in predictions file is missing text")
-        semantic_class = str(payload.get("semantic_class", resolved_default_class)).strip()
-        slots = extract_semantic_slots(text)
-        predictions.append(
-            SemanticPrediction(
-                source_id=str(payload.get("source_id", f"line-{line_number}")).strip(),
-                text=text,
-                semantic_class=validate_semantic_class(semantic_class),
-                confidence=float(payload.get("confidence", 0.5)),
-                slots=slots,
-            )
-        )
-    if not predictions:
-        raise ValueError(f"No valid predictions found in {predictions_path}")
-    return predictions
-
 
 def _load_second_pass_policy(config_path: str | None) -> SecondPassConfig:
     if config_path:

@@ -18,8 +18,8 @@ def test_generate_recognition_evaluation_report_writes_markdown(tmp_path: Path) 
         latency_ms=9.5,
     )
     report_path = generate_recognition_evaluation_report(
-        run_name="transocr_baseline",
-        model_name="transocr",
+        run_name="transformer_baseline",
+        model_name="transformer",
         metrics=metrics,
         output_dir=tmp_path,
         notes="Baseline run for Chinese scene-text recognition.",
@@ -27,7 +27,7 @@ def test_generate_recognition_evaluation_report_writes_markdown(tmp_path: Path) 
     content = report_path.read_text(encoding="utf-8")
 
     assert report_path.exists()
-    assert "Recognition Evaluation: transocr_baseline" in content
+    assert "Recognition Evaluation: transformer_baseline" in content
     assert "Word Accuracy" in content
 
 

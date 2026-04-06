@@ -111,59 +111,6 @@ def render_detection_history_plot(
     )
     return {"png": png_path, "markdown": markdown_path}
 
-
-def render_semantic_history_plot(
-    *,
-    run_name: str,
-    history_path: Path,
-    output_dir: Path,
-) -> dict[str, Path]:
-    history = _load_history(history_path)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    png_path = output_dir / f"{run_name}_training_curve.png"
-    markdown_path = output_dir / f"{run_name}_training_curve.md"
-
-    epochs = [int(item["epoch"]) for item in history]
-    train_loss = [float(item["train_loss"]) for item in history]
-    accuracy = [float(item["val_accuracy"]) for item in history]
-    macro_f1 = [float(item["val_macro_f1"]) for item in history]
-
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-    axes[0].plot(epochs, train_loss, marker="o", label="Train Loss")
-    axes[0].plot(epochs, accuracy, marker="s", label="Val Accuracy")
-    axes[0].set_title("Semantic Loss / Accuracy")
-    axes[0].set_xlabel("Epoch")
-    axes[0].set_ylabel("Value")
-    axes[0].legend()
-
-    axes[1].plot(epochs, accuracy, marker="o", label="Val Accuracy")
-    axes[1].plot(epochs, macro_f1, marker="s", label="Val Macro-F1")
-    axes[1].set_title("Semantic Accuracy / Macro-F1")
-    axes[1].set_xlabel("Epoch")
-    axes[1].set_ylabel("Value")
-    axes[1].legend()
-
-    fig.tight_layout()
-    fig.savefig(png_path, dpi=160)
-    plt.close(fig)
-
-    markdown_path.write_text(
-        "\n".join(
-            [
-                f"# Semantic Training Curves: {run_name}",
-                "",
-                f"- Image: `{png_path.name}`",
-                f"- Epochs: `{len(history)}`",
-                f"- Best Accuracy: `{max(accuracy):.6f}`",
-                f"- Best Macro-F1: `{max(macro_f1):.6f}`",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    return {"png": png_path, "markdown": markdown_path}
-
-
 def aggregate_training_runs(
     *,
     run_dirs: list[Path],

@@ -7,7 +7,6 @@ from dltr.visualization.training_reports import (
     aggregate_training_runs,
     render_detection_history_plot,
     render_recognition_history_plot,
-    render_semantic_history_plot,
 )
 
 __all__ = [
@@ -18,5 +17,4 @@ __all__ = [
     "render_detection_history_plot",
     "render_eda_markdown",
     "render_recognition_history_plot",
-    "render_semantic_history_plot",
 ]

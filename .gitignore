@@ -1,4 +1,5 @@
 .DS_Store
+AGENTS.md
 .python-version
 .venv/
 *.egg-info/

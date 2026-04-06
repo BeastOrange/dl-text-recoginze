@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import TextIO
 
 try:
     from tqdm import tqdm
@@ -18,13 +19,7 @@ class ProgressBar:
         self.current = 0
         self.bar = None
         if tqdm is not None and self.is_tty:
-            self.bar = tqdm(
-                total=self.total,
-                desc=self.description,
-                dynamic_ncols=True,
-                leave=True,
-                file=sys.stdout,
-            )
+            self.bar = tqdm(**_build_tqdm_kwargs(self.total, self.description, sys.stdout))
 
     def update(self, current: int, *, metrics: dict[str, float | int] | None = None) -> None:
         clamped = min(max(current, 0), self.total)
@@ -95,3 +90,21 @@ def _stringify_metrics(metrics: dict[str, float | int]) -> dict[str, str]:
         else:
             rendered[key] = str(value)
     return rendered
+
+
+def _build_tqdm_kwargs(total: int, description: str, stream: TextIO) -> dict[str, object]:
+    return {
+        "total": total,
+        "desc": description,
+        "dynamic_ncols": True,
+        "leave": True,
+        "file": stream,
+        "mininterval": 0.2,
+        "smoothing": 0.1,
+        "unit": "step",
+        "colour": "cyan",
+        "bar_format": (
+            "{desc:<18} {percentage:3.0f}%|{bar:24}| "
+            "{n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]"
+        ),
+    }

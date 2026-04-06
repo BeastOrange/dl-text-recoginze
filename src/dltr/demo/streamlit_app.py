@@ -71,7 +71,7 @@ def render_streamlit_app() -> None:
             st.info("暂未发现端到端预览结果。")
 
         st.subheader("OCR 后规则理解示例")
-        demo_report = reports_dir / "demo_assets" / "demo_preview_semantic_eval.md"
+        demo_report = reports_dir / "demo_assets" / "demo_preview_analysis_report.md"
         if demo_report.exists():
             st.markdown(demo_report.read_text(encoding="utf-8"))
         else:

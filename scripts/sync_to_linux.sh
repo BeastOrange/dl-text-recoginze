@@ -30,7 +30,6 @@ RSYNC_ARGS=(
   --exclude=data/raw/
   --exclude=data/interim/
   --exclude=data/processed/
-  --exclude=data/semantic/
   --exclude=artifacts/cache/
   --exclude=artifacts/checkpoints/
   --exclude=artifacts/tmp/

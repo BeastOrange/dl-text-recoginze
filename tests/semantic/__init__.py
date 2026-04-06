@@ -1,1 +1,0 @@
-"""Semantic scaffold tests."""

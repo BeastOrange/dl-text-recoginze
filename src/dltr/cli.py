@@ -9,14 +9,12 @@ from dltr.commands import (
     cmd_data_prepare_detection,
     cmd_data_prepare_recognition,
     cmd_data_prepare_recognition_crops,
-    cmd_data_prepare_semantic,
     cmd_data_stats,
     cmd_data_validate,
     cmd_demo,
     cmd_evaluate_detector,
     cmd_evaluate_end2end,
     cmd_evaluate_recognizer,
-    cmd_evaluate_semantic,
     cmd_export_onnx,
     cmd_report_build_ablation_overview,
     cmd_report_build_ablation_template,
@@ -27,8 +25,8 @@ from dltr.commands import (
     cmd_report_summarize_training,
     cmd_sync_linux,
     cmd_train_detector,
+    cmd_train_end2end,
     cmd_train_recognizer,
-    cmd_train_semantic,
 )
 
 Handler = Callable[[argparse.Namespace], int]
@@ -91,10 +89,6 @@ def build_parser() -> argparse.ArgumentParser:
     data_prepare_detection.add_argument("--val-ratio", default=0.1, type=float)
     data_prepare_detection.add_argument("--seed", default=42, type=int)
     data_prepare_detection.set_defaults(handler=cmd_data_prepare_detection)
-    data_prepare_semantic = data_sub.add_parser("prepare-semantic")
-    data_prepare_semantic.add_argument("--recognition-split-dir")
-    data_prepare_semantic.add_argument("--output-dir")
-    data_prepare_semantic.set_defaults(handler=cmd_data_prepare_semantic)
 
     train = top.add_parser("train", help="Training commands.")
     train_sub = train.add_subparsers(dest="command")
@@ -107,14 +101,16 @@ def build_parser() -> argparse.ArgumentParser:
     train_recognizer = train_sub.add_parser("recognizer")
     train_recognizer.add_argument(
         "--config",
-        default="configs/recognition/transocr_second_pass.yaml",
+        default="configs/recognition/transformer_baseline.yaml",
     )
     train_recognizer.add_argument("--run-id")
     train_recognizer.set_defaults(handler=cmd_train_recognizer)
-    train_semantic = train_sub.add_parser("semantic")
-    train_semantic.add_argument("--config", default="configs/semantic/char_linear_semantic.yaml")
-    train_semantic.add_argument("--run-id")
-    train_semantic.set_defaults(handler=cmd_train_semantic)
+    train_end2end = train_sub.add_parser("end2end")
+    train_end2end.add_argument("--detector-config", required=True)
+    train_end2end.add_argument("--recognizer-config", required=True)
+    train_end2end.add_argument("--run-id")
+    train_end2end.add_argument("--output-dir")
+    train_end2end.set_defaults(handler=cmd_train_end2end)
 
     evaluate = top.add_parser("evaluate", help="Evaluation commands.")
     eval_sub = evaluate.add_subparsers(dest="command")
@@ -139,12 +135,6 @@ def build_parser() -> argparse.ArgumentParser:
     eval_recognizer.add_argument("--notes")
     eval_recognizer.add_argument("--output-dir")
     eval_recognizer.set_defaults(handler=cmd_evaluate_recognizer)
-    eval_semantic = eval_sub.add_parser("semantic")
-    eval_semantic.add_argument("--run-name", required=True)
-    eval_semantic.add_argument("--predictions-jsonl", required=True)
-    eval_semantic.add_argument("--default-class", default="other")
-    eval_semantic.add_argument("--output-dir")
-    eval_semantic.set_defaults(handler=cmd_evaluate_semantic)
     eval_end2end = eval_sub.add_parser("end2end")
     eval_end2end.add_argument("--text")
     eval_end2end.add_argument("--confidence", type=float)
@@ -152,7 +142,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_end2end.add_argument("--contrast-score", type=float)
     eval_end2end.add_argument("--aspect-ratio", type=float)
     eval_end2end.add_argument("--recognition-config")
-    eval_end2end.add_argument("--semantic-class", default="other")
+    eval_end2end.add_argument("--analysis-label")
     eval_end2end.add_argument("--output")
     eval_end2end.add_argument("--image")
     eval_end2end.add_argument("--detector-checkpoint")
@@ -176,7 +166,7 @@ def build_parser() -> argparse.ArgumentParser:
     demo = top.add_parser("demo", help="Run the English demo app.")
     demo.add_argument("--text", default="营业时间 09:00-21:00 电话 13800138000")
     demo.add_argument("--source-id", default="demo-001")
-    demo.add_argument("--semantic-class", default="other")
+    demo.add_argument("--analysis-label")
     demo.add_argument("--confidence", default=0.65, type=float)
     demo.add_argument("--output-dir")
     demo.add_argument("--serve", action="store_true")
@@ -203,7 +193,6 @@ def build_parser() -> argparse.ArgumentParser:
     report_project = report_sub.add_parser("summarize-project")
     report_project.add_argument("--detection-summary-json", required=True)
     report_project.add_argument("--recognition-summary-json", required=True)
-    report_project.add_argument("--semantic-summary-json")
     report_project.add_argument("--output-dir")
     report_project.set_defaults(handler=cmd_report_summarize_project)
     report_index = report_sub.add_parser("build-index")
@@ -225,7 +214,6 @@ def build_parser() -> argparse.ArgumentParser:
     report_ablation_overview = report_sub.add_parser("build-ablation-overview")
     report_ablation_overview.add_argument("--detection-summary-json", required=True)
     report_ablation_overview.add_argument("--recognition-summary-json", required=True)
-    report_ablation_overview.add_argument("--semantic-summary-json")
     report_ablation_overview.add_argument("--output-dir")
     report_ablation_overview.set_defaults(handler=cmd_report_build_ablation_overview)
 

@@ -13,12 +13,6 @@ def build_training_report_index(
     markdown_files = sorted(
         path for path in train_reports_dir.glob("*.md") if path.name != markdown_path.name
     )
-    core_markdown = [
-        path
-        for path in markdown_files
-        if "semantic" not in path.name and "extension" not in path.name
-    ]
-    extension_markdown = [path for path in markdown_files if path not in core_markdown]
     markdown_path.write_text(
         "\n".join(
             [
@@ -29,13 +23,7 @@ def build_training_report_index(
                 "## OCR Mainline",
                 "",
             ]
-            + [f"- [{path.name}]({path.name})" for path in core_markdown]
-            + (
-                ["", "## Extension Reports", ""]
-                + [f"- [{path.name}]({path.name})" for path in extension_markdown]
-                if extension_markdown
-                else []
-            )
+            + [f"- [{path.name}]({path.name})" for path in markdown_files]
         )
         + "\n",
         encoding="utf-8",

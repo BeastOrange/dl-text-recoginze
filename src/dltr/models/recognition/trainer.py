@@ -42,6 +42,38 @@ def train_crnn_recognizer(
     paths: ProjectPaths | None = None,
     run_id: str | None = None,
 ) -> RecognitionTrainingResult:
+    return _train_ctc_recognizer(
+        config,
+        paths=paths,
+        run_id=run_id,
+        model_builder=_build_crnn_model,
+        training_note="CRNN baseline training run.",
+    )
+
+
+def train_transformer_recognizer(
+    config: RecognitionExperimentConfig,
+    *,
+    paths: ProjectPaths | None = None,
+    run_id: str | None = None,
+) -> RecognitionTrainingResult:
+    return _train_ctc_recognizer(
+        config,
+        paths=paths,
+        run_id=run_id,
+        model_builder=_build_transformer_model,
+        training_note="Transformer-CTC baseline training run.",
+    )
+
+
+def _train_ctc_recognizer(
+    config: RecognitionExperimentConfig,
+    *,
+    paths: ProjectPaths | None = None,
+    run_id: str | None = None,
+    model_builder: Any,
+    training_note: str,
+) -> RecognitionTrainingResult:
     torch = _import_torch()
     nn = torch.nn
     optim = torch.optim
@@ -102,7 +134,7 @@ def train_crnn_recognizer(
     )
 
     device = _select_device(torch, config.device)
-    model = _build_crnn_model(nn=nn, vocabulary_size=vocabulary.size).to(device)
+    model = model_builder(nn=nn, vocabulary_size=vocabulary.size).to(device)
     criterion = nn.CTCLoss(blank=vocabulary.blank_index, zero_infinity=True)
     optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
     history: list[dict[str, float | int]] = []
@@ -207,7 +239,7 @@ def train_crnn_recognizer(
         model_name=config.model_name,
         metrics=metrics,
         output_dir=run_dir,
-        notes="CRNN baseline training run.",
+        notes=training_note,
     )
     torch.save(
         {
@@ -361,6 +393,53 @@ def _build_crnn_model(nn: Any, vocabulary_size: int) -> Any:
             return torch.log_softmax(logits, dim=2)
 
     return _CRNN()
+
+
+def _build_transformer_model(nn: Any, vocabulary_size: int) -> Any:
+    torch = _import_torch()
+
+    class _TransformerCTC(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.features = nn.Sequential(
+                nn.Conv2d(1, 64, kernel_size=3, padding=1),
+                nn.ReLU(inplace=True),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(64, 128, kernel_size=3, padding=1),
+                nn.ReLU(inplace=True),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(128, 256, kernel_size=3, padding=1),
+                nn.ReLU(inplace=True),
+                nn.AdaptiveAvgPool2d((1, None)),
+            )
+            encoder_layer = nn.TransformerEncoderLayer(
+                d_model=256,
+                nhead=8,
+                dim_feedforward=512,
+                dropout=0.1,
+                batch_first=True,
+            )
+            self.position_embedding = nn.Parameter(torch.zeros(1, 512, 256))
+            self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+            self.classifier = nn.Linear(256, vocabulary_size)
+
+        def forward(self, images: Any) -> Any:
+            features = self.features(images)
+            sequence = features.squeeze(2).permute(0, 2, 1)
+            positional = self.position_embedding[:, : sequence.size(1)]
+            encoded = self.encoder(sequence + positional)
+            logits = self.classifier(encoded).permute(1, 0, 2)
+            return torch.log_softmax(logits, dim=2)
+
+    return _TransformerCTC()
+
+
+def _build_recognizer_model(nn: Any, model_name: str, vocabulary_size: int) -> Any:
+    if model_name == "crnn":
+        return _build_crnn_model(nn=nn, vocabulary_size=vocabulary_size)
+    if model_name == "transformer":
+        return _build_transformer_model(nn=nn, vocabulary_size=vocabulary_size)
+    raise ValueError(f"Unsupported recognition model: {model_name}")
 
 
 def _evaluate_ctc_model(

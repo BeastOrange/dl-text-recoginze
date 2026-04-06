@@ -23,7 +23,6 @@ class ProjectPaths:
     data_raw: Path
     data_interim: Path
     data_processed: Path
-    data_semantic: Path
     reports: Path
     artifacts: Path
     change_records: Path
@@ -40,7 +39,6 @@ class ProjectPaths:
             data_raw=repo_root / "data" / "raw",
             data_interim=repo_root / "data" / "interim",
             data_processed=repo_root / "data" / "processed",
-            data_semantic=repo_root / "data" / "semantic",
             reports=repo_root / "reports",
             artifacts=repo_root / "artifacts",
             change_records=repo_root / "change_records",
@@ -57,7 +55,6 @@ class ProjectPaths:
             self.data_raw,
             self.data_interim,
             self.data_processed,
-            self.data_semantic,
         )
 
 

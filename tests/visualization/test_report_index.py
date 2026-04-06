@@ -25,7 +25,7 @@ def test_build_ablation_template_writes_sections(tmp_path: Path) -> None:
     output = build_ablation_template(
         output_dir=tmp_path,
         task_name="recognition",
-        experiments=["crnn_baseline", "transocr_refine", "transocr_refine_hardcase"],
+        experiments=["crnn_baseline", "transformer_baseline", "transformer_hardcase"],
     )
 
     assert output.exists()

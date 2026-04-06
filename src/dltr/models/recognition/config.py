@@ -6,7 +6,7 @@ from typing import Any
 
 import yaml
 
-SUPPORTED_MODELS = {"crnn", "transocr"}
+SUPPORTED_MODELS = {"crnn", "transformer"}
 
 
 @dataclass(frozen=True)

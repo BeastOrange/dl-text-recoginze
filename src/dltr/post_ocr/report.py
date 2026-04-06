@@ -5,17 +5,17 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .classes import validate_semantic_class
-from .slots import SemanticSlots
+from dltr.post_ocr.classification import validate_analysis_label
+from dltr.post_ocr.slots import PostOCRSlots
 
 
 @dataclass(frozen=True)
-class SemanticPrediction:
+class PostOCRPrediction:
     source_id: str
     text: str
-    semantic_class: str
+    analysis_label: str
     confidence: float
-    slots: SemanticSlots
+    slots: PostOCRSlots
 
     def validate(self) -> None:
         if not self.source_id.strip():
@@ -24,12 +24,12 @@ class SemanticPrediction:
             raise ValueError("text must be non-empty")
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError("confidence must be in [0, 1]")
-        validate_semantic_class(self.semantic_class)
+        validate_analysis_label(self.analysis_label)
 
 
-def generate_semantic_report(
+def generate_post_ocr_report(
     run_name: str,
-    predictions: list[SemanticPrediction],
+    predictions: list[PostOCRPrediction],
     output_dir: str | Path,
 ) -> Path:
     if not run_name.strip():
@@ -39,21 +39,21 @@ def generate_semantic_report(
     for prediction in predictions:
         prediction.validate()
 
-    counts = Counter(pred.semantic_class for pred in predictions)
+    counts = Counter(pred.analysis_label for pred in predictions)
     target_dir = Path(output_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
-    report_path = target_dir / f"{run_name}_semantic_eval.md"
+    report_path = target_dir / f"{run_name}_analysis_report.md"
     timestamp = datetime.now(UTC).isoformat()
 
     lines = [
-        f"# Semantic Evaluation: {run_name}",
+        f"# Post-OCR Analysis Report: {run_name}",
         "",
         f"- Generated at (UTC): `{timestamp}`",
         f"- Samples: `{len(predictions)}`",
         "",
-        "## Class Distribution",
+        "## Analysis Label Distribution",
         "",
-        "| Class | Count |",
+        "| Label | Count |",
         "|---|---:|",
     ]
     for label, count in sorted(counts.items(), key=lambda item: item[0]):
@@ -64,7 +64,7 @@ def generate_semantic_report(
             "",
             "## Prediction Preview",
             "",
-            "| Source | Class | Confidence | Keywords | Phone | Price | Time |",
+            "| Source | Label | Confidence | Keywords | Phone | Price | Time |",
             "|---|---|---:|---|---|---|---|",
         ]
     )
@@ -74,7 +74,7 @@ def generate_semantic_report(
         price = ", ".join(sample.slots.price[:2]) or "-"
         time = ", ".join(sample.slots.time[:2]) or "-"
         lines.append(
-            f"| {sample.source_id} | {sample.semantic_class} | {sample.confidence:.4f} | "
+            f"| {sample.source_id} | {sample.analysis_label} | {sample.confidence:.4f} | "
             f"{keywords} | {phone} | {price} | {time} |"
         )
 

@@ -51,7 +51,7 @@ STOPWORDS = {
 
 
 @dataclass(frozen=True)
-class SemanticSlots:
+class PostOCRSlots:
     phone: list[str]
     price: list[str]
     time: list[str]
@@ -119,8 +119,8 @@ def extract_location_hints(text: str) -> list[str]:
     return _deduplicate(hints)
 
 
-def extract_semantic_slots(text: str) -> SemanticSlots:
-    return SemanticSlots(
+def extract_post_ocr_slots(text: str) -> PostOCRSlots:
+    return PostOCRSlots(
         phone=extract_phone_numbers(text),
         price=extract_prices(text),
         time=extract_times(text),

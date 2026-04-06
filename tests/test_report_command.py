@@ -57,8 +57,8 @@ def test_report_build_index_and_ablation_commands_write_outputs(tmp_path, monkey
             "recognition",
             "--experiments",
             "crnn_baseline",
-            "transocr_refine",
-            "transocr_refine_hardcase",
+            "transformer_baseline",
+            "transformer_hardcase",
             "--output-dir",
             "reports/train",
         ]

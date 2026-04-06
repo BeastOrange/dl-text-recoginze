@@ -10,9 +10,7 @@ def test_demo_static_mode_writes_assets(tmp_path, monkeypatch) -> None:
     exit_code = main(["demo", "--text", "营业时间 09:00-21:00 电话 13800138000"])
 
     assert exit_code == 0
-    assert (
-        tmp_path / "reports" / "demo_assets" / "generated" / "demo_preview_semantic_eval.md"
-    ).exists()
+    assert (tmp_path / "reports" / "demo_assets" / "demo_preview_analysis_report.md").exists()
 
 
 def test_demo_serve_mode_invokes_streamlit(monkeypatch, tmp_path) -> None:

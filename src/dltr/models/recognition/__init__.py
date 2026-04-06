@@ -1,4 +1,4 @@
-"""Recognition scaffolding for CRNN/TransOCR experiments."""
+"""Recognition scaffolding for CRNN and Transformer OCR experiments."""
 
 from .charset import CharacterVocabulary
 from .config import RecognitionExperimentConfig, SecondPassConfig, load_recognition_config
@@ -6,7 +6,7 @@ from .dataset import RecognitionSample, load_recognition_samples
 from .evaluation import RecognitionMetrics, generate_recognition_evaluation_report
 from .metrics import RecognitionScoreSummary, compute_recognition_scores
 from .refinement import QualitySignals, second_pass_reasons, should_apply_second_pass
-from .trainer import RecognitionTrainingResult, train_crnn_recognizer
+from .trainer import RecognitionTrainingResult, train_crnn_recognizer, train_transformer_recognizer
 
 __all__ = [
     "CharacterVocabulary",
@@ -24,4 +24,5 @@ __all__ = [
     "second_pass_reasons",
     "should_apply_second_pass",
     "train_crnn_recognizer",
+    "train_transformer_recognizer",
 ]

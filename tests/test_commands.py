@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from dltr.cli import main
 
 
@@ -63,7 +65,7 @@ def test_build_manifest_command_emits_jsonl_rows(tmp_path: Path, monkeypatch) ->
     assert payload["text"] == "测试文本"
 
 
-def test_train_recognizer_returns_nonzero_for_transocr_placeholder(
+def test_train_recognizer_returns_nonzero_for_unsupported_legacy_model(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -81,7 +83,7 @@ def test_train_recognizer_returns_nonzero_for_transocr_placeholder(
         "\n".join(
             [
                 "experiment_name: rec_smoke",
-                "model_name: transocr",
+                "model_name: legacy_attention",
                 "dataset_manifest: data/processed/train.jsonl",
                 "validation_manifest: data/processed/val.jsonl",
                 "charset_file: data/processed/charset.txt",
@@ -113,42 +115,6 @@ def test_train_recognizer_returns_nonzero_for_transocr_placeholder(
     assert exit_code == 1
 
 
-def test_evaluate_semantic_writes_report(tmp_path: Path, monkeypatch) -> None:
-    (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
-    predictions = tmp_path / "semantic_predictions.jsonl"
-    predictions.write_text(
-        json.dumps(
-            {
-                "source_id": "demo-1",
-                "text": "营业时间09:00-21:00 电话13800138000",
-                "semantic_class": "service_info",
-                "confidence": 0.9,
-            },
-            ensure_ascii=False,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    monkeypatch.chdir(tmp_path)
-
-    exit_code = main(
-        [
-            "evaluate",
-            "semantic",
-            "--run-name",
-            "semantic-smoke",
-            "--predictions-jsonl",
-            "semantic_predictions.jsonl",
-            "--output-dir",
-            "reports/eval",
-        ]
-    )
-
-    report_path = tmp_path / "reports" / "eval" / "semantic-smoke_semantic_eval.md"
-    assert exit_code == 0
-    assert report_path.exists()
-
-
 def test_demo_and_end2end_generate_outputs(tmp_path: Path, monkeypatch) -> None:
     (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
@@ -167,12 +133,49 @@ def test_demo_and_end2end_generate_outputs(tmp_path: Path, monkeypatch) -> None:
         ]
     )
 
+    report_path = tmp_path / "reports" / "demo_assets" / "demo_preview_analysis_report.md"
+    preview_path = tmp_path / "reports" / "eval" / "end2end_preview.json"
+
     assert demo_code == 0
     assert end2end_code == 0
-    assert (
-        tmp_path / "reports" / "demo_assets" / "generated" / "demo_preview_semantic_eval.md"
-    ).exists()
-    assert (tmp_path / "reports" / "eval" / "end2end_preview.json").exists()
+    assert report_path.exists()
+    assert preview_path.exists()
+    payload = json.loads(preview_path.read_text(encoding="utf-8"))
+    assert "analysis_label" in payload
+    assert "slots" in payload
+
+
+def test_evaluate_removed_semantic_command_rejected(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
+    predictions = tmp_path / "legacy_predictions.jsonl"
+    predictions.write_text(
+        json.dumps(
+            {
+                "source_id": "demo-1",
+                "text": "营业时间09:00-21:00 电话13800138000",
+                "analysis_label": "service_info",
+                "confidence": 0.9,
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "evaluate",
+                "semantic",
+                "--run-name",
+                "legacy-analysis-smoke",
+                "--predictions-jsonl",
+                "legacy_predictions.jsonl",
+                "--output-dir",
+                "reports/eval",
+            ]
+        )
 
 
 def test_wrapper_entrypoint_works_from_repo_root() -> None:

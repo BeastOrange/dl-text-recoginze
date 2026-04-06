@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 
 from dltr.models.recognition.charset import CharacterVocabulary
-from dltr.models.recognition.trainer import _build_crnn_model, _import_torch, _select_device
+from dltr.models.recognition.trainer import _build_recognizer_model, _import_torch, _select_device
 
 
 @dataclass(frozen=True)
@@ -24,6 +24,7 @@ def recognize_crop(
     torch = _import_torch()
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     config = checkpoint.get("config", {})
+    model_name = str(config.get("model_name", "crnn")).strip().lower() or "crnn"
     image_height = int(config.get("image_height", 48))
     image_width = int(config.get("image_width", 320))
     charset_file = Path(str(config.get("charset_file", "")))
@@ -32,7 +33,7 @@ def recognize_crop(
     vocabulary = CharacterVocabulary.from_file(charset_file)
     device = _select_device(torch, str(config.get("device", "auto")))
 
-    model = _build_crnn_model(torch.nn, vocabulary_size=vocabulary.size)
+    model = _build_recognizer_model(torch.nn, model_name, vocabulary_size=vocabulary.size)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.to(device)
     model.eval()
