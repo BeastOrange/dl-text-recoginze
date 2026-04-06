@@ -233,3 +233,51 @@ def test_evaluate_end2end_manifest_mode_writes_summary(monkeypatch, tmp_path: Pa
     assert exit_code == 0
     assert called["manifest_path"] == manifest_path
     assert called["max_images"] == 5
+
+
+def test_evaluate_end2end_manifest_sweep_mode_writes_summary(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
+    manifest_path = tmp_path / "data" / "processed" / "detection_splits" / "val.jsonl"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text("{}\n", encoding="utf-8")
+    detector_checkpoint = tmp_path / "det.pt"
+    recognizer_checkpoint = tmp_path / "rec.pt"
+    detector_checkpoint.write_bytes(b"pt")
+    recognizer_checkpoint.write_bytes(b"pt")
+
+    called = {}
+
+    def fake_sweep_end_to_end_manifest(**kwargs):
+        called.update(kwargs)
+        output_dir = tmp_path / "reports" / "eval"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        json_path = output_dir / "end2end_sweep_summary.json"
+        markdown_path = output_dir / "end2end_sweep_summary.md"
+        json_path.write_text("{}", encoding="utf-8")
+        markdown_path.write_text("# sweep\n", encoding="utf-8")
+        return {"json": json_path, "markdown": markdown_path}
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "dltr.commands.sweep_end_to_end_manifest",
+        fake_sweep_end_to_end_manifest,
+    )
+
+    exit_code = main(
+        [
+            "evaluate",
+            "end2end",
+            "--manifest",
+            str(manifest_path),
+            "--detector-checkpoint",
+            str(detector_checkpoint),
+            "--recognizer-checkpoint",
+            str(recognizer_checkpoint),
+            "--sweep",
+            "--output-dir",
+            "reports/eval",
+        ]
+    )
+
+    assert exit_code == 0
+    assert called["manifest_path"] == manifest_path

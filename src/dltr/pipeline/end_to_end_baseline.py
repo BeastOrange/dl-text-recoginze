@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +30,7 @@ class MatchedLine:
 class EndToEndMatchResult:
     total_gt: int
     matches: list[MatchedLine]
+    missed_gt_texts: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,9 @@ class EndToEndBaselineImageResult:
     exact_match_lines: int
     prediction_texts: list[str]
     target_texts: list[str]
+    correct_matches: list[MatchedLine] = field(default_factory=list)
+    wrong_matches: list[MatchedLine] = field(default_factory=list)
+    missed_gt_texts: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -54,6 +58,10 @@ class EndToEndBaselineSummary:
     matched_cer: float
     matched_ned: float
     matched_mean_edit_distance: float
+
+
+DEFAULT_SWEEP_THRESHOLDS = (0.3, 0.4, 0.5)
+DEFAULT_SWEEP_MIN_AREAS = (16.0, 32.0)
 
 
 def evaluate_end_to_end_manifest(
@@ -72,73 +80,27 @@ def evaluate_end_to_end_manifest(
         for line in manifest_path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
-    total_rows = min(len(rows), max_images) if max_images is not None else len(rows)
-    image_results: list[EndToEndBaselineImageResult] = []
-    progress = ProgressBar(total=total_rows, description="系统评估")
     detector_session = DetectionPredictorSession.from_checkpoint(detector_checkpoint)
     recognizer_session = RecognitionPredictorSession.from_checkpoint(recognizer_checkpoint)
     second_pass_policy = _load_second_pass_policy(recognizer_checkpoint)
-
-    for index, payload in enumerate(rows):
-        if max_images is not None and index >= max_images:
-            break
-        image_path = Path(str(payload.get("image_path", "")))
-        instances = list(payload.get("instances", []))
-        _, line_results = infer_end_to_end_image(
-            image_path=image_path,
-            detector_checkpoint=detector_checkpoint,
-            recognizer_checkpoint=recognizer_checkpoint,
-            detector_threshold=detector_threshold,
-            min_area=min_area,
-            detector_session=detector_session,
-            recognizer_session=recognizer_session,
-            second_pass_policy=second_pass_policy,
-        )
-        match_result = match_predictions_to_ground_truth(
-            line_results,
-            instances,
-            iou_threshold=iou_threshold,
-        )
-        prediction_texts = [item.pred_text for item in match_result.matches]
-        target_texts = [item.gt_text for item in match_result.matches]
-        exact_match_lines = sum(
-            1
-            for prediction, target in zip(prediction_texts, target_texts, strict=True)
-            if prediction == target
-        )
-        image_results.append(
-            EndToEndBaselineImageResult(
-                image_path=image_path,
-                total_gt=match_result.total_gt,
-                matched_lines=len(match_result.matches),
-                exact_match_lines=exact_match_lines,
-                prediction_texts=prediction_texts,
-                target_texts=target_texts,
-            )
-        )
-        partial = aggregate_end_to_end_baseline(image_results)
-        progress.update(
-            len(image_results),
-            metrics={
-                "images": len(image_results),
-                "matched": partial.matched_lines,
-                "coverage": partial.detection_coverage,
-                "exact": partial.exact_match_lines,
-            },
-        )
-
-    summary = aggregate_end_to_end_baseline(image_results)
-    progress.finish(
-        metrics={
-            "images": summary.total_images,
-            "matched": summary.matched_lines,
-            "coverage": summary.detection_coverage,
-            "exact": summary.exact_match_lines,
-        }
+    summary, image_results = _evaluate_manifest_rows(
+        rows=rows,
+        detector_checkpoint=detector_checkpoint,
+        recognizer_checkpoint=recognizer_checkpoint,
+        detector_session=detector_session,
+        recognizer_session=recognizer_session,
+        second_pass_policy=second_pass_policy,
+        max_images=max_images,
+        detector_threshold=detector_threshold,
+        min_area=min_area,
+        iou_threshold=iou_threshold,
+        description="系统评估",
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / "end2end_baseline_summary.json"
     markdown_path = output_dir / "end2end_baseline_summary.md"
+    analysis_json_path = output_dir / "end2end_error_analysis.json"
+    analysis_markdown_path = output_dir / "end2end_error_analysis.md"
     json_path.write_text(
         json.dumps(
             {
@@ -152,6 +114,113 @@ def evaluate_end_to_end_manifest(
         encoding="utf-8",
     )
     markdown_path.write_text(_build_markdown_summary(summary), encoding="utf-8")
+    analysis_payload = _build_error_analysis_payload(image_results)
+    analysis_json_path.write_text(
+        json.dumps(analysis_payload, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+    analysis_markdown_path.write_text(
+        _build_error_analysis_markdown(analysis_payload),
+        encoding="utf-8",
+    )
+    return {
+        "json": json_path,
+        "markdown": markdown_path,
+        "analysis_json": analysis_json_path,
+        "analysis_markdown": analysis_markdown_path,
+    }
+
+
+def sweep_end_to_end_manifest(
+    *,
+    manifest_path: Path,
+    output_dir: Path,
+    detector_checkpoint: Path,
+    recognizer_checkpoint: Path,
+    detector_thresholds: list[float] | None = None,
+    min_areas: list[float] | None = None,
+    max_images: int | None = None,
+    iou_threshold: float = 0.5,
+) -> dict[str, Path]:
+    rows = [
+        json.loads(line)
+        for line in manifest_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    resolved_thresholds = detector_thresholds or list(DEFAULT_SWEEP_THRESHOLDS)
+    resolved_min_areas = min_areas or list(DEFAULT_SWEEP_MIN_AREAS)
+    detector_session = DetectionPredictorSession.from_checkpoint(detector_checkpoint)
+    recognizer_session = RecognitionPredictorSession.from_checkpoint(recognizer_checkpoint)
+    second_pass_policy = _load_second_pass_policy(recognizer_checkpoint)
+    combos = [
+        (threshold, min_area)
+        for threshold in resolved_thresholds
+        for min_area in resolved_min_areas
+    ]
+    progress = ProgressBar(total=len(combos), description="参数扫描")
+    records: list[dict[str, float | int]] = []
+    for index, (threshold, min_area) in enumerate(combos, start=1):
+        summary, _ = _evaluate_manifest_rows(
+            rows=rows,
+            detector_checkpoint=detector_checkpoint,
+            recognizer_checkpoint=recognizer_checkpoint,
+            detector_session=detector_session,
+            recognizer_session=recognizer_session,
+            second_pass_policy=second_pass_policy,
+            max_images=max_images,
+            detector_threshold=threshold,
+            min_area=min_area,
+            iou_threshold=iou_threshold,
+            description=f"扫描 t={threshold:.2f} a={min_area:.0f}",
+        )
+        records.append(
+            {
+                "detector_threshold": threshold,
+                "min_area": min_area,
+                **asdict(summary),
+            }
+        )
+        best = max(
+            records,
+            key=lambda item: (
+                item["system_line_accuracy"],
+                item["detection_coverage"],
+                -item["matched_cer"],
+            ),
+        )
+        progress.update(
+            index,
+            metrics={
+                "best_thr": best["detector_threshold"],
+                "best_area": best["min_area"],
+                "best_acc": best["system_line_accuracy"],
+            },
+        )
+    progress.finish(
+        metrics={
+            "combos": len(records),
+            "best_acc": max(item["system_line_accuracy"] for item in records) if records else 0.0,
+        }
+    )
+    records.sort(
+        key=lambda item: (
+            item["system_line_accuracy"],
+            item["detection_coverage"],
+            -item["matched_cer"],
+        ),
+        reverse=True,
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+    json_path = output_dir / "end2end_sweep_summary.json"
+    markdown_path = output_dir / "end2end_sweep_summary.md"
+    json_path.write_text(
+        json.dumps(records, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    markdown_path.write_text(
+        _build_sweep_markdown(records),
+        encoding="utf-8",
+    )
     return {"json": json_path, "markdown": markdown_path}
 
 
@@ -189,7 +258,16 @@ def match_predictions_to_ground_truth(
             )
         )
 
-    return EndToEndMatchResult(total_gt=len(gt_candidates), matches=matches)
+    missed_gt_texts = [
+        str(gt_candidates[index].get("text", "")).strip()
+        for index in range(len(gt_candidates))
+        if index not in matched_ground_truth
+    ]
+    return EndToEndMatchResult(
+        total_gt=len(gt_candidates),
+        matches=matches,
+        missed_gt_texts=missed_gt_texts,
+    )
 
 
 def aggregate_end_to_end_baseline(
@@ -263,6 +341,191 @@ def _build_markdown_summary(summary: EndToEndBaselineSummary) -> str:
         f"| matched_ned | {summary.matched_ned:.6f} |",
         f"| matched_mean_edit_distance | {summary.matched_mean_edit_distance:.6f} |",
     ]
+    return "\n".join(lines) + "\n"
+
+
+def _evaluate_manifest_rows(
+    *,
+    rows: list[dict[str, Any]],
+    detector_checkpoint: Path,
+    recognizer_checkpoint: Path,
+    detector_session: DetectionPredictorSession,
+    recognizer_session: RecognitionPredictorSession,
+    second_pass_policy: Any,
+    max_images: int | None,
+    detector_threshold: float,
+    min_area: float,
+    iou_threshold: float,
+    description: str,
+) -> tuple[EndToEndBaselineSummary, list[EndToEndBaselineImageResult]]:
+    total_rows = min(len(rows), max_images) if max_images is not None else len(rows)
+    progress = ProgressBar(total=total_rows, description=description)
+    image_results: list[EndToEndBaselineImageResult] = []
+    for index, payload in enumerate(rows):
+        if max_images is not None and index >= max_images:
+            break
+        image_path = Path(str(payload.get("image_path", "")))
+        instances = list(payload.get("instances", []))
+        _, line_results = infer_end_to_end_image(
+            image_path=image_path,
+            detector_checkpoint=detector_checkpoint,
+            recognizer_checkpoint=recognizer_checkpoint,
+            detector_threshold=detector_threshold,
+            min_area=min_area,
+            detector_session=detector_session,
+            recognizer_session=recognizer_session,
+            second_pass_policy=second_pass_policy,
+        )
+        match_result = match_predictions_to_ground_truth(
+            line_results,
+            instances,
+            iou_threshold=iou_threshold,
+        )
+        correct_matches = [item for item in match_result.matches if item.pred_text == item.gt_text]
+        wrong_matches = [item for item in match_result.matches if item.pred_text != item.gt_text]
+        prediction_texts = [item.pred_text for item in match_result.matches]
+        target_texts = [item.gt_text for item in match_result.matches]
+        image_results.append(
+            EndToEndBaselineImageResult(
+                image_path=image_path,
+                total_gt=match_result.total_gt,
+                matched_lines=len(match_result.matches),
+                exact_match_lines=len(correct_matches),
+                prediction_texts=prediction_texts,
+                target_texts=target_texts,
+                correct_matches=correct_matches,
+                wrong_matches=wrong_matches,
+                missed_gt_texts=match_result.missed_gt_texts,
+            )
+        )
+        partial = aggregate_end_to_end_baseline(image_results)
+        progress.update(
+            len(image_results),
+            metrics={
+                "images": len(image_results),
+                "matched": partial.matched_lines,
+                "coverage": partial.detection_coverage,
+                "exact": partial.exact_match_lines,
+            },
+        )
+    summary = aggregate_end_to_end_baseline(image_results)
+    progress.finish(
+        metrics={
+            "images": summary.total_images,
+            "matched": summary.matched_lines,
+            "coverage": summary.detection_coverage,
+            "exact": summary.exact_match_lines,
+        }
+    )
+    return summary, image_results
+
+
+def _build_error_analysis_payload(
+    image_results: list[EndToEndBaselineImageResult],
+) -> dict[str, Any]:
+    missed = [
+        {
+            "image_path": str(item.image_path),
+            "missed_count": len(item.missed_gt_texts),
+            "missed_gt_texts": item.missed_gt_texts[:5],
+        }
+        for item in image_results
+        if item.missed_gt_texts
+    ]
+    wrong = [
+        {
+            "image_path": str(item.image_path),
+            "gt_text": match.gt_text,
+            "pred_text": match.pred_text,
+            "iou": match.iou,
+        }
+        for item in image_results
+        for match in item.wrong_matches
+    ]
+    correct = [
+        {
+            "image_path": str(item.image_path),
+            "gt_text": match.gt_text,
+            "pred_text": match.pred_text,
+            "iou": match.iou,
+        }
+        for item in image_results
+        for match in item.correct_matches
+    ]
+    return {
+        "missed_detection": missed[:50],
+        "wrong_recognition": wrong[:50],
+        "correct_samples": correct[:30],
+        "counts": {
+            "missed_detection_images": len(missed),
+            "wrong_recognition_matches": len(wrong),
+            "correct_matches": len(correct),
+        },
+    }
+
+
+def _build_error_analysis_markdown(payload: dict[str, Any]) -> str:
+    counts = payload["counts"]
+    lines = [
+        "# End-to-End Error Analysis",
+        "",
+        f"- Missed detection images: `{counts['missed_detection_images']}`",
+        f"- Wrong recognition matches: `{counts['wrong_recognition_matches']}`",
+        f"- Correct matches: `{counts['correct_matches']}`",
+        "",
+        "## Missed Detections",
+        "",
+        "| Image | Missed Count | GT Examples |",
+        "|---|---:|---|",
+    ]
+    for item in payload["missed_detection"]:
+        lines.append(
+            f"| {item['image_path']} | {item['missed_count']} | "
+            f"{', '.join(item['missed_gt_texts']) or '-'} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Wrong Recognitions",
+            "",
+            "| Image | GT | Pred | IoU |",
+            "|---|---|---|---:|",
+        ]
+    )
+    for item in payload["wrong_recognition"]:
+        lines.append(
+            f"| {item['image_path']} | {item['gt_text']} | "
+            f"{item['pred_text']} | {item['iou']:.4f} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Correct Samples",
+            "",
+            "| Image | Text | IoU |",
+            "|---|---|---:|",
+        ]
+    )
+    for item in payload["correct_samples"]:
+        lines.append(
+            f"| {item['image_path']} | {item['gt_text']} | {item['iou']:.4f} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _build_sweep_markdown(records: list[dict[str, Any]]) -> str:
+    lines = [
+        "# End-to-End Sweep Summary",
+        "",
+        "| Threshold | Min Area | Coverage | System Acc | Matched Acc | CER |",
+        "|---:|---:|---:|---:|---:|---:|",
+    ]
+    for item in records:
+        lines.append(
+            f"| {item['detector_threshold']:.4f} | {item['min_area']:.1f} | "
+            f"{item['detection_coverage']:.6f} | {item['system_line_accuracy']:.6f} | "
+            f"{item['matched_line_accuracy']:.6f} | {item['matched_cer']:.6f} |"
+        )
     return "\n".join(lines) + "\n"
 
 

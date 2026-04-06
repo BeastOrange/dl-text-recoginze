@@ -6,6 +6,7 @@ from dltr.pipeline.end_to_end_baseline import (
     aggregate_end_to_end_baseline,
     evaluate_end_to_end_manifest,
     match_predictions_to_ground_truth,
+    sweep_end_to_end_manifest,
 )
 from dltr.post_ocr.slots import extract_post_ocr_slots
 
@@ -162,6 +163,7 @@ def test_evaluate_end_to_end_manifest_updates_progress(monkeypatch, tmp_path: Pa
     assert progress_calls[2][1] == 2
     assert progress_calls[-1][0] == "finish"
     assert progress_calls[-1][2]["images"] == 2
+    assert (tmp_path / "reports" / "eval" / "end2end_error_analysis.md").exists()
 
 
 def test_evaluate_end_to_end_manifest_reuses_predictor_sessions(
@@ -236,3 +238,64 @@ def test_evaluate_end_to_end_manifest_reuses_predictor_sessions(
 
     assert calls["detector"] == 1
     assert calls["recognizer"] == 1
+
+
+def test_sweep_end_to_end_manifest_writes_ranked_summary(monkeypatch, tmp_path: Path) -> None:
+    manifest_path = tmp_path / "val.jsonl"
+    manifest_path.write_text("{}\n", encoding="utf-8")
+
+    class _DetectorSession:
+        @classmethod
+        def from_checkpoint(cls, checkpoint_path):  # noqa: ANN001
+            return cls()
+
+    class _RecognizerSession:
+        @classmethod
+        def from_checkpoint(cls, checkpoint_path):  # noqa: ANN001
+            return cls()
+
+    def fake_evaluate_manifest_rows(**kwargs):  # noqa: ANN001
+        threshold = kwargs["detector_threshold"]
+        min_area = kwargs["min_area"]
+        total = 10
+        matched = 4 if threshold < 0.5 else 2
+        exact = 2 if min_area <= 16 else 1
+        image_results = [
+            EndToEndBaselineImageResult(
+                image_path=Path("sample.png"),
+                total_gt=total,
+                matched_lines=matched,
+                exact_match_lines=exact,
+                prediction_texts=["营业时间"] * matched,
+                target_texts=["营业时间"] * exact + ["营业"] * max(matched - exact, 0),
+            )
+        ]
+        return aggregate_end_to_end_baseline(image_results), image_results
+
+    monkeypatch.setattr(
+        "dltr.pipeline.end_to_end_baseline.DetectionPredictorSession",
+        _DetectorSession,
+    )
+    monkeypatch.setattr(
+        "dltr.pipeline.end_to_end_baseline.RecognitionPredictorSession",
+        _RecognizerSession,
+    )
+    monkeypatch.setattr(
+        "dltr.pipeline.end_to_end_baseline._evaluate_manifest_rows",
+        fake_evaluate_manifest_rows,
+    )
+
+    outputs = sweep_end_to_end_manifest(
+        manifest_path=manifest_path,
+        output_dir=tmp_path / "reports" / "eval",
+        detector_checkpoint=tmp_path / "det.pt",
+        recognizer_checkpoint=tmp_path / "rec.pt",
+        detector_thresholds=[0.4, 0.6],
+        min_areas=[16.0, 32.0],
+    )
+
+    assert outputs["json"].exists()
+    assert outputs["markdown"].exists()
+    content = outputs["markdown"].read_text(encoding="utf-8")
+    assert "End-to-End Sweep Summary" in content
+    assert "0.4000" in content

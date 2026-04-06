@@ -56,7 +56,10 @@ from dltr.pipeline.checkpoints import (
     resolve_best_checkpoint,
 )
 from dltr.pipeline.end_to_end import run_end_to_end_pipeline
-from dltr.pipeline.end_to_end_baseline import evaluate_end_to_end_manifest
+from dltr.pipeline.end_to_end_baseline import (
+    evaluate_end_to_end_manifest,
+    sweep_end_to_end_manifest,
+)
 from dltr.post_ocr import (
     PostOCRPrediction,
     analyze_scene_text,
@@ -801,18 +804,31 @@ def cmd_evaluate_end2end(args: argparse.Namespace) -> int:
             checkpoint=args.recognizer_checkpoint,
             run_dir=args.recognizer_run_dir,
         )
-        outputs = evaluate_end_to_end_manifest(
-            manifest_path=_resolve_existing_path_arg(args.manifest),
-            output_dir=_resolve_output_path(
-                args.output_dir,
-                ProjectPaths.from_root().reports / "eval",
-            ),
-            detector_checkpoint=detector_checkpoint,
-            recognizer_checkpoint=recognizer_checkpoint,
-            max_images=args.max_images,
-            detector_threshold=args.detector_threshold,
-            min_area=args.min_area,
+        manifest_path = _resolve_existing_path_arg(args.manifest)
+        output_dir = _resolve_output_path(
+            args.output_dir,
+            ProjectPaths.from_root().reports / "eval",
         )
+        if args.sweep:
+            outputs = sweep_end_to_end_manifest(
+                manifest_path=manifest_path,
+                output_dir=output_dir,
+                detector_checkpoint=detector_checkpoint,
+                recognizer_checkpoint=recognizer_checkpoint,
+                detector_thresholds=args.sweep_detector_thresholds,
+                min_areas=args.sweep_min_areas,
+                max_images=args.max_images,
+            )
+        else:
+            outputs = evaluate_end_to_end_manifest(
+                manifest_path=manifest_path,
+                output_dir=output_dir,
+                detector_checkpoint=detector_checkpoint,
+                recognizer_checkpoint=recognizer_checkpoint,
+                max_images=args.max_images,
+                detector_threshold=args.detector_threshold,
+                min_area=args.min_area,
+            )
         print(f"json={outputs['json']}")
         print(f"markdown={outputs['markdown']}")
         return 0
