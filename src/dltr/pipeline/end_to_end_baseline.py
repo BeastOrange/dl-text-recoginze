@@ -8,8 +8,14 @@ from typing import Any
 import cv2
 import numpy as np
 
+from dltr.models.detection.inference import DetectionPredictorSession
+from dltr.models.recognition.inference import RecognitionPredictorSession
 from dltr.models.recognition.metrics import compute_recognition_scores
-from dltr.pipeline.end_to_end import EndToEndLineResult, run_end_to_end_pipeline
+from dltr.pipeline.end_to_end import (
+    EndToEndLineResult,
+    _load_second_pass_policy,
+    infer_end_to_end_image,
+)
 from dltr.terminal import ProgressBar
 
 
@@ -68,25 +74,28 @@ def evaluate_end_to_end_manifest(
     ]
     total_rows = min(len(rows), max_images) if max_images is not None else len(rows)
     image_results: list[EndToEndBaselineImageResult] = []
-    item_root = output_dir / "end2end_baseline_items"
-    item_root.mkdir(parents=True, exist_ok=True)
     progress = ProgressBar(total=total_rows, description="系统评估")
+    detector_session = DetectionPredictorSession.from_checkpoint(detector_checkpoint)
+    recognizer_session = RecognitionPredictorSession.from_checkpoint(recognizer_checkpoint)
+    second_pass_policy = _load_second_pass_policy(recognizer_checkpoint)
 
     for index, payload in enumerate(rows):
         if max_images is not None and index >= max_images:
             break
         image_path = Path(str(payload.get("image_path", "")))
         instances = list(payload.get("instances", []))
-        artifacts = run_end_to_end_pipeline(
+        _, line_results = infer_end_to_end_image(
             image_path=image_path,
-            output_dir=item_root / f"{index:05d}",
             detector_checkpoint=detector_checkpoint,
             recognizer_checkpoint=recognizer_checkpoint,
             detector_threshold=detector_threshold,
             min_area=min_area,
+            detector_session=detector_session,
+            recognizer_session=recognizer_session,
+            second_pass_policy=second_pass_policy,
         )
         match_result = match_predictions_to_ground_truth(
-            artifacts.line_results,
+            line_results,
             instances,
             iou_threshold=iou_threshold,
         )

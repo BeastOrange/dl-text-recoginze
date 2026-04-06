@@ -7,9 +7,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from dltr.models.detection.inference import predict_text_regions
+from dltr.models.detection.inference import DetectionPredictorSession
 from dltr.models.recognition.config import SecondPassConfig
-from dltr.models.recognition.inference import recognize_crop
+from dltr.models.recognition.inference import RecognitionPredictorSession
 from dltr.models.recognition.refinement import (
     QualitySignals,
     second_pass_reasons,
@@ -55,6 +55,9 @@ def run_end_to_end_pipeline(
     recognizer_checkpoint: Path,
     detector_threshold: float = 0.5,
     min_area: float = 32.0,
+    detector_session: DetectionPredictorSession | None = None,
+    recognizer_session: RecognitionPredictorSession | None = None,
+    second_pass_policy: SecondPassConfig | None = None,
 ) -> EndToEndPipelineArtifacts:
     return _run_pipeline_internal(
         image_path=image_path,
@@ -63,6 +66,9 @@ def run_end_to_end_pipeline(
         recognizer_checkpoint=recognizer_checkpoint,
         detector_threshold=detector_threshold,
         min_area=min_area,
+        detector_session=detector_session,
+        recognizer_session=recognizer_session,
+        second_pass_policy=second_pass_policy,
     )
 
 
@@ -74,90 +80,21 @@ def _run_pipeline_internal(
     recognizer_checkpoint: Path,
     detector_threshold: float = 0.5,
     min_area: float = 32.0,
+    detector_session: DetectionPredictorSession | None = None,
+    recognizer_session: RecognitionPredictorSession | None = None,
+    second_pass_policy: SecondPassConfig | None = None,
 ) -> EndToEndPipelineArtifacts:
     output_dir.mkdir(parents=True, exist_ok=True)
-    original = cv2.imread(str(image_path))
-    if original is None:
-        raise FileNotFoundError(f"Could not read image: {image_path}")
-
-    detections = predict_text_regions(
+    preview, line_results = infer_end_to_end_image(
         image_path=image_path,
-        checkpoint_path=detector_checkpoint,
-        threshold=detector_threshold,
+        detector_checkpoint=detector_checkpoint,
+        recognizer_checkpoint=recognizer_checkpoint,
+        detector_threshold=detector_threshold,
         min_area=min_area,
+        detector_session=detector_session,
+        recognizer_session=recognizer_session,
+        second_pass_policy=second_pass_policy,
     )
-
-    crop_dir = output_dir / "crops"
-    crop_dir.mkdir(parents=True, exist_ok=True)
-    preview = original.copy()
-    line_results: list[EndToEndLineResult] = []
-    second_pass_policy = _load_second_pass_policy(recognizer_checkpoint)
-
-    for index, detection in enumerate(detections):
-        crop = _crop_polygon(original, detection.polygon)
-        if crop is None or crop.size == 0:
-            continue
-        crop_path = crop_dir / f"line_{index:03d}.png"
-        cv2.imwrite(str(crop_path), crop)
-        first_pass = recognize_crop(
-            image_path=crop_path,
-            checkpoint_path=recognizer_checkpoint,
-        )
-        quality = _estimate_quality_signals(crop)
-        reasons = second_pass_reasons(
-            first_pass.confidence,
-            first_pass.text,
-            quality,
-            second_pass_policy,
-        )
-        recognition = first_pass
-        second_pass_applied = False
-        second_pass_text: str | None = None
-        second_pass_confidence: float | None = None
-        if should_apply_second_pass(
-            first_pass.confidence,
-            first_pass.text,
-            quality,
-            second_pass_policy,
-        ):
-            second_pass_path = crop_dir / f"line_{index:03d}_second_pass.png"
-            enhanced = _apply_second_pass_enhancement(crop)
-            cv2.imwrite(str(second_pass_path), enhanced)
-            second_pass_prediction = recognize_crop(
-                image_path=second_pass_path,
-                checkpoint_path=recognizer_checkpoint,
-            )
-            second_pass_applied = True
-            second_pass_text = second_pass_prediction.text
-            second_pass_confidence = second_pass_prediction.confidence
-            if (
-                second_pass_prediction.confidence >= first_pass.confidence
-                or not first_pass.text.strip()
-            ):
-                recognition = second_pass_prediction
-        analysis = analyze_scene_text(recognition.text)
-        slots = extract_post_ocr_slots(recognition.text)
-        result = EndToEndLineResult(
-            line_id=f"line-{index}",
-            polygon=detection.polygon,
-            text=recognition.text,
-            recognition_confidence=recognition.confidence,
-            analysis_label=analysis.label,
-            analysis_confidence=analysis.confidence,
-            slots=slots,
-            second_pass_applied=second_pass_applied,
-            second_pass_reasons=reasons,
-            first_pass_text=first_pass.text,
-            first_pass_confidence=first_pass.confidence,
-            second_pass_text=second_pass_text,
-            second_pass_confidence=second_pass_confidence,
-        )
-        line_results.append(result)
-        _draw_polygon(
-            preview,
-            detection.polygon,
-            f"{recognition.text[:12]} | {analysis.label}",
-        )
 
     json_path = output_dir / "end_to_end_result.json"
     markdown_path = output_dir / "end_to_end_result.md"
@@ -199,6 +136,128 @@ def _run_pipeline_internal(
         preview_image_path=preview_path,
         line_results=line_results,
     )
+
+
+def infer_end_to_end_image(
+    *,
+    image_path: Path,
+    detector_checkpoint: Path,
+    recognizer_checkpoint: Path,
+    detector_threshold: float = 0.5,
+    min_area: float = 32.0,
+    detector_session: DetectionPredictorSession | None = None,
+    recognizer_session: RecognitionPredictorSession | None = None,
+    second_pass_policy: SecondPassConfig | None = None,
+) -> tuple[np.ndarray, list[EndToEndLineResult]]:
+    original = cv2.imread(str(image_path))
+    if original is None:
+        raise FileNotFoundError(f"Could not read image: {image_path}")
+
+    resolved_detector_session = detector_session or DetectionPredictorSession.from_checkpoint(
+        detector_checkpoint
+    )
+    resolved_recognizer_session = recognizer_session or RecognitionPredictorSession.from_checkpoint(
+        recognizer_checkpoint
+    )
+    resolved_policy = second_pass_policy or _load_second_pass_policy(recognizer_checkpoint)
+
+    detections = resolved_detector_session.predict_image(
+        original,
+        threshold=detector_threshold,
+        min_area=min_area,
+    )
+    preview = original.copy()
+    line_results: list[EndToEndLineResult] = []
+    cropped_items: list[tuple[int, object, np.ndarray]] = []
+    for index, detection in enumerate(detections):
+        crop = _crop_polygon(original, detection.polygon)
+        if crop is None or crop.size == 0:
+            continue
+        cropped_items.append((index, detection, crop))
+
+    first_pass_predictions = resolved_recognizer_session.recognize_images(
+        [crop for _, _, crop in cropped_items]
+    )
+    second_pass_indexes: list[int] = []
+    second_pass_crops: list[np.ndarray] = []
+    prepared: list[dict[str, object]] = []
+
+    for item_index, ((index, detection, crop), first_pass) in enumerate(
+        zip(cropped_items, first_pass_predictions, strict=True)
+    ):
+        quality = _estimate_quality_signals(crop)
+        reasons = second_pass_reasons(
+            first_pass.confidence,
+            first_pass.text,
+            quality,
+            resolved_policy,
+        )
+        prepared.append(
+            {
+                "index": index,
+                "detection": detection,
+                "crop": crop,
+                "first_pass": first_pass,
+                "reasons": reasons,
+                "quality": quality,
+            }
+        )
+        if should_apply_second_pass(
+            first_pass.confidence,
+            first_pass.text,
+            quality,
+            resolved_policy,
+        ):
+            second_pass_indexes.append(item_index)
+            second_pass_crops.append(_apply_second_pass_enhancement(crop))
+
+    second_pass_predictions = resolved_recognizer_session.recognize_images(second_pass_crops)
+    second_pass_map = dict(zip(second_pass_indexes, second_pass_predictions, strict=True))
+
+    for prepared_index, item in enumerate(prepared):
+        index = int(item["index"])
+        detection = item["detection"]
+        first_pass = item["first_pass"]
+        reasons = item["reasons"]
+        recognition = first_pass
+        second_pass_applied = False
+        second_pass_text: str | None = None
+        second_pass_confidence: float | None = None
+        if prepared_index in second_pass_map:
+            second_pass_prediction = second_pass_map[prepared_index]
+            second_pass_applied = True
+            second_pass_text = second_pass_prediction.text
+            second_pass_confidence = second_pass_prediction.confidence
+            if (
+                second_pass_prediction.confidence >= first_pass.confidence
+                or not first_pass.text.strip()
+            ):
+                recognition = second_pass_prediction
+        analysis = analyze_scene_text(recognition.text)
+        slots = extract_post_ocr_slots(recognition.text)
+        result = EndToEndLineResult(
+            line_id=f"line-{index}",
+            polygon=detection.polygon,
+            text=recognition.text,
+            recognition_confidence=recognition.confidence,
+            analysis_label=analysis.label,
+            analysis_confidence=analysis.confidence,
+            slots=slots,
+            second_pass_applied=second_pass_applied,
+            second_pass_reasons=list(reasons),
+            first_pass_text=first_pass.text,
+            first_pass_confidence=first_pass.confidence,
+            second_pass_text=second_pass_text,
+            second_pass_confidence=second_pass_confidence,
+        )
+        line_results.append(result)
+        _draw_polygon(
+            preview,
+            detection.polygon,
+            f"{recognition.text[:12]} | {analysis.label}",
+        )
+
+    return preview, line_results
 
 
 def _crop_polygon(image: np.ndarray, polygon: list[int]) -> np.ndarray | None:

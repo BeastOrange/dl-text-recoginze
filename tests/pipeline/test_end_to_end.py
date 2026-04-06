@@ -75,22 +75,41 @@ def test_run_end_to_end_pipeline_applies_real_second_pass(monkeypatch, tmp_path:
     image = np.full((60, 160, 3), 255, dtype=np.uint8)
     cv2.imwrite(str(image_path), image)
 
-    class _Detection:
-        polygon = [10, 10, 150, 10, 150, 40, 10, 40]
+    calls: list[str] = []
 
-    calls: list[Path] = []
+    class _DetectorSession:
+        @classmethod
+        def from_checkpoint(cls, checkpoint_path):  # noqa: ANN001
+            return cls()
 
-    def fake_predict_text_regions(**_: object) -> list[_Detection]:
-        return [_Detection()]
+        def predict_image(self, image, *, threshold, min_area):  # noqa: ANN001
+            return [
+                type(
+                    "Prediction",
+                    (),
+                    {"polygon": [10, 10, 150, 10, 150, 40, 10, 40], "score": 0.9},
+                )()
+            ]
 
-    def fake_recognize_crop(*, image_path: Path, checkpoint_path: Path):  # noqa: ARG001
-        calls.append(image_path)
-        if len(calls) == 1:
-            return type("Prediction", (), {"text": "营", "confidence": 0.42})()
-        return type("Prediction", (), {"text": "营业时间", "confidence": 0.91})()
+    class _RecognizerSession:
+        @classmethod
+        def from_checkpoint(cls, checkpoint_path):  # noqa: ANN001
+            return cls()
 
-    monkeypatch.setattr("dltr.pipeline.end_to_end.predict_text_regions", fake_predict_text_regions)
-    monkeypatch.setattr("dltr.pipeline.end_to_end.recognize_crop", fake_recognize_crop)
+        def recognize_images(self, images):  # noqa: ANN001
+            calls.append(f"batch-{len(images)}")
+            if len(calls) == 1:
+                return [type("Prediction", (), {"text": "营", "confidence": 0.42})()]
+            return [type("Prediction", (), {"text": "营业时间", "confidence": 0.91})()]
+
+    monkeypatch.setattr(
+        "dltr.pipeline.end_to_end.DetectionPredictorSession",
+        _DetectorSession,
+    )
+    monkeypatch.setattr(
+        "dltr.pipeline.end_to_end.RecognitionPredictorSession",
+        _RecognizerSession,
+    )
 
     artifacts = run_end_to_end_pipeline(
         image_path=image_path,
@@ -103,3 +122,34 @@ def test_run_end_to_end_pipeline_applies_real_second_pass(monkeypatch, tmp_path:
     assert len(calls) == 2
     assert payload["lines"][0]["text"] == "营业时间"
     assert payload["lines"][0]["second_pass_applied"] is True
+
+
+def test_run_end_to_end_pipeline_accepts_reused_sessions(monkeypatch, tmp_path: Path) -> None:
+    image_path = tmp_path / "scene.png"
+    image = np.full((60, 160, 3), 255, dtype=np.uint8)
+    cv2.imwrite(str(image_path), image)
+
+    class _DetectorSession:
+        def predict_image(self, image, *, threshold, min_area):  # noqa: ANN001
+            return [
+                type(
+                    "Prediction",
+                    (),
+                    {"polygon": [10, 10, 150, 10, 150, 40, 10, 40], "score": 0.9},
+                )()
+            ]
+
+    class _RecognizerSession:
+        def recognize_images(self, images):  # noqa: ANN001
+            return [type("Prediction", (), {"text": "营业时间", "confidence": 0.95})()]
+
+    artifacts = run_end_to_end_pipeline(
+        image_path=image_path,
+        output_dir=tmp_path / "output",
+        detector_checkpoint=tmp_path / "det.pt",
+        recognizer_checkpoint=tmp_path / "rec.pt",
+        detector_session=_DetectorSession(),
+        recognizer_session=_RecognizerSession(),
+    )
+
+    assert artifacts.line_results[0].text == "营业时间"

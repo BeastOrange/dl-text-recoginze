@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from dltr.pipeline.end_to_end import EndToEndLineResult, EndToEndPipelineArtifacts
+from dltr.pipeline.end_to_end import EndToEndLineResult
 from dltr.pipeline.end_to_end_baseline import (
     EndToEndBaselineImageResult,
     aggregate_end_to_end_baseline,
@@ -102,7 +102,17 @@ def test_evaluate_end_to_end_manifest_updates_progress(monkeypatch, tmp_path: Pa
         def finish(self, *, metrics=None) -> None:  # noqa: ANN001
             progress_calls.append(("finish", -1, metrics or {}))
 
-    def fake_run_end_to_end_pipeline(**kwargs):  # noqa: ANN001
+    class _DetectorSession:
+        @classmethod
+        def from_checkpoint(cls, checkpoint_path):  # noqa: ANN001
+            return cls()
+
+    class _RecognizerSession:
+        @classmethod
+        def from_checkpoint(cls, checkpoint_path):  # noqa: ANN001
+            return cls()
+
+    def fake_infer_end_to_end_image(**kwargs):  # noqa: ANN001
         image_path = kwargs["image_path"]
         if image_path == image_a:
             line_results = [
@@ -118,29 +128,23 @@ def test_evaluate_end_to_end_manifest_updates_progress(monkeypatch, tmp_path: Pa
             ]
         else:
             line_results = []
-        output_dir = tmp_path / "items"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        json_path = output_dir / f"{image_path.stem}.json"
-        markdown_path = output_dir / f"{image_path.stem}.md"
-        preview_path = output_dir / f"{image_path.stem}.png"
-        json_path.write_text("{}", encoding="utf-8")
-        markdown_path.write_text("# report\n", encoding="utf-8")
-        preview_path.write_bytes(b"png")
-        return EndToEndPipelineArtifacts(
-            output_dir=output_dir,
-            json_path=json_path,
-            markdown_path=markdown_path,
-            preview_image_path=preview_path,
-            line_results=line_results,
-        )
+        return None, line_results
 
     monkeypatch.setattr(
         "dltr.pipeline.end_to_end_baseline.ProgressBar",
         _FakeProgressBar,
     )
     monkeypatch.setattr(
-        "dltr.pipeline.end_to_end_baseline.run_end_to_end_pipeline",
-        fake_run_end_to_end_pipeline,
+        "dltr.pipeline.end_to_end_baseline.DetectionPredictorSession",
+        _DetectorSession,
+    )
+    monkeypatch.setattr(
+        "dltr.pipeline.end_to_end_baseline.RecognitionPredictorSession",
+        _RecognizerSession,
+    )
+    monkeypatch.setattr(
+        "dltr.pipeline.end_to_end_baseline.infer_end_to_end_image",
+        fake_infer_end_to_end_image,
     )
 
     evaluate_end_to_end_manifest(
@@ -158,3 +162,77 @@ def test_evaluate_end_to_end_manifest_updates_progress(monkeypatch, tmp_path: Pa
     assert progress_calls[2][1] == 2
     assert progress_calls[-1][0] == "finish"
     assert progress_calls[-1][2]["images"] == 2
+
+
+def test_evaluate_end_to_end_manifest_reuses_predictor_sessions(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    manifest_path = tmp_path / "val.jsonl"
+    image_a = tmp_path / "a.png"
+    image_b = tmp_path / "b.png"
+    image_a.write_bytes(b"fake")
+    image_b.write_bytes(b"fake")
+    manifest_path.write_text(
+        "\n".join(
+            [
+                '{"image_path": "' + str(image_a) + '", "instances": []}',
+                '{"image_path": "' + str(image_b) + '", "instances": []}',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    calls = {"detector": 0, "recognizer": 0}
+
+    class _DetectorSession:
+        @classmethod
+        def from_checkpoint(cls, checkpoint_path):  # noqa: ANN001
+            calls["detector"] += 1
+            return cls()
+
+    class _RecognizerSession:
+        @classmethod
+        def from_checkpoint(cls, checkpoint_path):  # noqa: ANN001
+            calls["recognizer"] += 1
+            return cls()
+
+    def fake_infer_end_to_end_image(**kwargs):  # noqa: ANN001
+        return (
+            None,
+            [
+                EndToEndLineResult(
+                    line_id="line-0",
+                    polygon=[10, 10, 110, 10, 110, 40, 10, 40],
+                    text="营业时间",
+                    recognition_confidence=0.95,
+                    analysis_label="service_info",
+                    analysis_confidence=0.9,
+                    slots=extract_post_ocr_slots("营业时间"),
+                )
+            ],
+        )
+
+    monkeypatch.setattr(
+        "dltr.pipeline.end_to_end_baseline.DetectionPredictorSession",
+        _DetectorSession,
+    )
+    monkeypatch.setattr(
+        "dltr.pipeline.end_to_end_baseline.RecognitionPredictorSession",
+        _RecognizerSession,
+    )
+    monkeypatch.setattr(
+        "dltr.pipeline.end_to_end_baseline.infer_end_to_end_image",
+        fake_infer_end_to_end_image,
+    )
+
+    evaluate_end_to_end_manifest(
+        manifest_path=manifest_path,
+        output_dir=tmp_path / "reports" / "eval",
+        detector_checkpoint=tmp_path / "det.pt",
+        recognizer_checkpoint=tmp_path / "rec.pt",
+    )
+
+    assert calls["detector"] == 1
+    assert calls["recognizer"] == 1
