@@ -9,6 +9,10 @@ import cv2
 import numpy as np
 
 from dltr.models.recognition.charset import CharacterVocabulary
+from dltr.models.recognition.preprocessing import (
+    RecognitionPreprocessConfig,
+    prepare_recognition_image,
+)
 from dltr.models.recognition.trainer import (
     _build_recognizer_model,
     _import_torch,
@@ -33,6 +37,7 @@ class RecognitionPredictorSession:
         device: str,
         image_height: int,
         image_width: int,
+        preprocess_config: RecognitionPreprocessConfig,
     ) -> None:
         self._torch = torch
         self._model = model
@@ -40,6 +45,7 @@ class RecognitionPredictorSession:
         self._device = device
         self._image_height = image_height
         self._image_width = image_width
+        self._preprocess_config = preprocess_config
 
     @classmethod
     def from_checkpoint(cls, checkpoint_path: Path) -> RecognitionPredictorSession:
@@ -55,6 +61,17 @@ class RecognitionPredictorSession:
         )
         vocabulary = CharacterVocabulary.from_file(charset_file)
         device = _select_device(torch, str(config.get("device", "auto")))
+        preprocess_raw = config.get("preprocess", {})
+        preprocess_config = RecognitionPreprocessConfig(
+            target_height=image_height,
+            target_width=image_width,
+            preserve_aspect_ratio=bool(preprocess_raw.get("preserve_aspect_ratio", True)),
+            rotate_vertical_text=bool(preprocess_raw.get("rotate_vertical_text", True)),
+            vertical_aspect_threshold=float(
+                preprocess_raw.get("vertical_aspect_threshold", 1.2)
+            ),
+            padding_value=int(preprocess_raw.get("padding_value", 255)),
+        )
 
         model = _build_recognizer_model(torch.nn, model_name, vocabulary_size=vocabulary.size)
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -67,13 +84,13 @@ class RecognitionPredictorSession:
             device=device,
             image_height=image_height,
             image_width=image_width,
+            preprocess_config=preprocess_config,
         )
 
     def recognize_image(self, image: np.ndarray) -> RecognitionPrediction:
-        grayscale = _ensure_grayscale(image)
-        resized = cv2.resize(grayscale, (self._image_width, self._image_height))
+        resized, _ = prepare_recognition_image(image, config=self._preprocess_config)
         tensor = (
-            self._torch.tensor(resized.astype(np.float32) / 255.0, dtype=self._torch.float32)
+            self._torch.tensor(resized, dtype=self._torch.float32)
             .unsqueeze(0)
             .unsqueeze(0)
             .to(self._device)
@@ -85,13 +102,13 @@ class RecognitionPredictorSession:
             return []
         batch = np.stack(
             [
-                cv2.resize(_ensure_grayscale(image), (self._image_width, self._image_height))
+                prepare_recognition_image(image, config=self._preprocess_config)[0]
                 for image in images
             ],
             axis=0,
         )
         tensor = (
-            self._torch.tensor(batch.astype(np.float32) / 255.0, dtype=self._torch.float32)
+            self._torch.tensor(batch.astype(np.float32), dtype=self._torch.float32)
             .unsqueeze(1)
             .to(self._device)
         )
@@ -148,9 +165,3 @@ def _resolve_charset_path(*, checkpoint_path: Path, charset_raw: str) -> Path:
         return repo_candidate
     checkpoint_candidate = checkpoint_path.resolve().parents[3] / charset_file
     return checkpoint_candidate
-
-
-def _ensure_grayscale(image: np.ndarray) -> np.ndarray:
-    if image.ndim == 2:
-        return image
-    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)

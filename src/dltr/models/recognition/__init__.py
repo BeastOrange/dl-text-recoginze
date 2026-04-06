@@ -5,6 +5,11 @@ from .config import RecognitionExperimentConfig, SecondPassConfig, load_recognit
 from .dataset import RecognitionSample, load_recognition_samples
 from .evaluation import RecognitionMetrics, generate_recognition_evaluation_report
 from .metrics import RecognitionScoreSummary, compute_recognition_scores
+from .preprocessing import (
+    RecognitionPreprocessConfig,
+    RecognitionPreprocessMeta,
+    prepare_recognition_image,
+)
 from .refinement import QualitySignals, second_pass_reasons, should_apply_second_pass
 from .trainer import RecognitionTrainingResult, train_crnn_recognizer, train_transformer_recognizer
 
@@ -13,6 +18,8 @@ __all__ = [
     "QualitySignals",
     "RecognitionExperimentConfig",
     "RecognitionMetrics",
+    "RecognitionPreprocessConfig",
+    "RecognitionPreprocessMeta",
     "RecognitionSample",
     "RecognitionScoreSummary",
     "RecognitionTrainingResult",
@@ -23,6 +30,7 @@ __all__ = [
     "load_recognition_config",
     "second_pass_reasons",
     "should_apply_second_pass",
+    "prepare_recognition_image",
     "train_crnn_recognizer",
     "train_transformer_recognizer",
 ]

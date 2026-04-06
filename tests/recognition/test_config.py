@@ -28,6 +28,12 @@ def test_load_recognition_config_valid(tmp_path: Path) -> None:
             "min_aspect_ratio": 0.2,
             "max_aspect_ratio": 20.0,
         },
+        "preprocess": {
+            "preserve_aspect_ratio": True,
+            "rotate_vertical_text": True,
+            "vertical_aspect_threshold": 1.2,
+            "padding_value": 255,
+        },
     }
     config_path = tmp_path / "config.yaml"
     config_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
@@ -38,6 +44,32 @@ def test_load_recognition_config_valid(tmp_path: Path) -> None:
     assert config.validation_manifest == "data/processed/val.jsonl"
     assert config.second_pass.enabled is True
     assert config.second_pass.confidence_threshold == pytest.approx(0.8)
+    assert config.preprocess.preserve_aspect_ratio is True
+    assert config.preprocess.rotate_vertical_text is True
+
+
+def test_load_recognition_config_uses_default_preprocess_values(tmp_path: Path) -> None:
+    payload = {
+        "experiment_name": "transformer_demo",
+        "model_name": "transformer",
+        "dataset_manifest": "data/processed/manifest.jsonl",
+        "validation_manifest": "data/processed/val.jsonl",
+        "charset_file": "data/processed/charset.txt",
+        "output_dir": "artifacts/checkpoints/recognition/transformer_demo",
+        "epochs": 2,
+        "batch_size": 16,
+        "image_height": 48,
+        "image_width": 320,
+        "learning_rate": 0.001,
+    }
+    config_path = tmp_path / "config_default.yaml"
+    config_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
+
+    config = load_recognition_config(config_path)
+
+    assert config.preprocess.preserve_aspect_ratio is True
+    assert config.preprocess.rotate_vertical_text is True
+    assert config.preprocess.vertical_aspect_threshold == pytest.approx(1.2)
 
 
 def test_load_recognition_config_rejects_invalid_model(tmp_path: Path) -> None:

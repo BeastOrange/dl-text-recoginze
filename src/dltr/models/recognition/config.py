@@ -6,6 +6,8 @@ from typing import Any
 
 import yaml
 
+from .preprocessing import RecognitionPreprocessConfig
+
 SUPPORTED_MODELS = {"crnn", "transformer"}
 
 
@@ -48,6 +50,7 @@ class RecognitionExperimentConfig:
     image_width: int
     learning_rate: float
     second_pass: SecondPassConfig = field(default_factory=SecondPassConfig)
+    preprocess: RecognitionPreprocessConfig | None = None
     device: str = "auto"
     num_workers: int = 0
 
@@ -75,10 +78,16 @@ class RecognitionExperimentConfig:
         if self.learning_rate <= 0:
             raise ValueError("learning_rate must be > 0")
         self.second_pass.validate()
+        if self.preprocess is None:
+            raise ValueError("preprocess must be configured")
+        self.preprocess.validate()
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> RecognitionExperimentConfig:
         second_pass_raw = payload.get("second_pass", {})
+        preprocess_raw = payload.get("preprocess", {})
+        image_height = int(payload.get("image_height", 0))
+        image_width = int(payload.get("image_width", 0))
         second_pass = SecondPassConfig(
             enabled=bool(second_pass_raw.get("enabled", True)),
             confidence_threshold=float(second_pass_raw.get("confidence_threshold", 0.78)),
@@ -87,6 +96,16 @@ class RecognitionExperimentConfig:
             min_text_length=int(second_pass_raw.get("min_text_length", 2)),
             min_aspect_ratio=float(second_pass_raw.get("min_aspect_ratio", 0.2)),
             max_aspect_ratio=float(second_pass_raw.get("max_aspect_ratio", 20.0)),
+        )
+        preprocess = RecognitionPreprocessConfig(
+            target_height=image_height,
+            target_width=image_width,
+            preserve_aspect_ratio=bool(preprocess_raw.get("preserve_aspect_ratio", True)),
+            rotate_vertical_text=bool(preprocess_raw.get("rotate_vertical_text", True)),
+            vertical_aspect_threshold=float(
+                preprocess_raw.get("vertical_aspect_threshold", 1.2)
+            ),
+            padding_value=int(preprocess_raw.get("padding_value", 255)),
         )
         config = cls(
             experiment_name=str(payload.get("experiment_name", "")).strip(),
@@ -97,12 +116,13 @@ class RecognitionExperimentConfig:
             output_dir=str(payload.get("output_dir", "")).strip(),
             epochs=int(payload.get("epochs", 0)),
             batch_size=int(payload.get("batch_size", 0)),
-            image_height=int(payload.get("image_height", 0)),
-            image_width=int(payload.get("image_width", 0)),
+            image_height=image_height,
+            image_width=image_width,
             learning_rate=float(payload.get("learning_rate", 0.0)),
             device=str(payload.get("device", "auto")).strip() or "auto",
             num_workers=int(payload.get("num_workers", 0)),
             second_pass=second_pass,
+            preprocess=preprocess,
         )
         config.validate()
         return config

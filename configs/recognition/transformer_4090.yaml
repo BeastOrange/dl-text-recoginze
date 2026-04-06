@@ -11,6 +11,11 @@ image_width: 320
 learning_rate: 0.0007
 device: auto
 num_workers: 8
+preprocess:
+  preserve_aspect_ratio: true
+  rotate_vertical_text: true
+  vertical_aspect_threshold: 1.2
+  padding_value: 255
 second_pass:
   enabled: true
   confidence_threshold: 0.78

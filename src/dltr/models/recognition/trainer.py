@@ -22,6 +22,10 @@ from dltr.models.recognition.evaluation import (
     generate_recognition_evaluation_report,
 )
 from dltr.models.recognition.metrics import compute_recognition_scores
+from dltr.models.recognition.preprocessing import (
+    RecognitionPreprocessConfig,
+    prepare_recognition_image,
+)
 from dltr.project import ProjectPaths
 from dltr.terminal import ProgressBar
 from dltr.visualization.training_reports import render_recognition_history_plot
@@ -121,14 +125,12 @@ def _train_ctc_recognizer(
     train_dataset = _TorchRecognitionDataset(
         train_samples,
         vocabulary,
-        image_height=config.image_height,
-        image_width=config.image_width,
+        preprocess_config=config.preprocess,
     )
     val_dataset = _TorchRecognitionDataset(
         val_samples,
         vocabulary,
-        image_height=config.image_height,
-        image_width=config.image_width,
+        preprocess_config=config.preprocess,
     )
     train_loader = data_utils.DataLoader(
         train_dataset,
@@ -391,22 +393,21 @@ class _TorchRecognitionDataset:
         samples: list[RecognitionSample],
         vocabulary: CharacterVocabulary,
         *,
-        image_height: int,
-        image_width: int,
+        preprocess_config: RecognitionPreprocessConfig | None,
     ) -> None:
         self.samples = samples
         self.vocabulary = vocabulary
-        self.image_height = image_height
-        self.image_width = image_width
+        self.preprocess_config = preprocess_config
 
     def __len__(self) -> int:
         return len(self.samples)
 
     def __getitem__(self, index: int) -> dict[str, object]:
         sample = self.samples[index]
-        image = Image.open(sample.image_path).convert("L")
-        image = image.resize((self.image_width, self.image_height))
-        image_array = np.asarray(image, dtype=np.float32) / 255.0
+        if self.preprocess_config is None:
+            raise ValueError("Recognition preprocess config is required")
+        image = np.asarray(Image.open(sample.image_path).convert("L"), dtype=np.uint8)
+        image_array, _ = prepare_recognition_image(image, config=self.preprocess_config)
         encoded = self.vocabulary.encode(sample.text)
         return {
             "image": image_array,
