@@ -243,7 +243,7 @@ def cmd_data_prepare_recognition_crops(args: argparse.Namespace) -> int:
     )
     split_root = _resolve_output_path(
         args.recognition_split_dir,
-        paths.data_processed / "recognition_splits",
+        paths.data_processed / "recognition_crop_splits",
     )
     split_root.mkdir(parents=True, exist_ok=True)
 
@@ -266,12 +266,12 @@ def cmd_data_prepare_recognition_crops(args: argparse.Namespace) -> int:
 
     combined_path = _resolve_output_path(
         args.combined_output,
-        paths.data_processed / "recognition_combined.jsonl",
+        paths.data_processed / "recognition_crop_combined.jsonl",
     )
     combine_recognition_manifests(split_manifests, combined_path)
     charset_path = _resolve_output_path(
         args.charset_output,
-        paths.data_processed / "charset_zh_mixed.txt",
+        paths.data_processed / "recognition_crop_charset_zh_mixed.txt",
     )
     build_charset_from_manifest(combined_path, charset_path, min_frequency=args.min_frequency)
 

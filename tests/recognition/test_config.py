@@ -71,3 +71,15 @@ def test_load_transformer_4090_config_targets_gpu_throughput() -> None:
     assert config.model_name == "transformer"
     assert config.batch_size >= 128
     assert config.num_workers >= 4
+
+
+def test_load_transformer_detector_crop_4090_config_uses_crop_manifests() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+
+    config = load_recognition_config(
+        repo_root / "configs" / "recognition" / "transformer_detector_crop_4090.yaml"
+    )
+
+    assert config.model_name == "transformer"
+    assert "recognition_crop_splits/train.jsonl" in config.dataset_manifest
+    assert "recognition_crop_charset_zh_mixed.txt" in config.charset_file

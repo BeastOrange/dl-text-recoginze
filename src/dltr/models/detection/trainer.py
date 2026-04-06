@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+import cv2
 import numpy as np
 from PIL import Image
 
@@ -68,16 +69,19 @@ def train_dbnet_detector(
         train_samples,
         image_height=config.image_height,
         image_width=config.image_width,
+        multi_scale_augmentation=config.multi_scale_augmentation,
     )
     val_dataset = _TorchDetectionDataset(
         val_samples,
         image_height=config.image_height,
         image_width=config.image_width,
     )
+    train_sampler = _build_train_sampler(train_samples) if config.hard_case_sampling else None
     train_loader = data_utils.DataLoader(
         train_dataset,
         batch_size=config.batch_size,
-        shuffle=True,
+        shuffle=train_sampler is None,
+        sampler=train_sampler,
         num_workers=config.num_workers,
     )
     val_loader = data_utils.DataLoader(
@@ -244,10 +248,18 @@ def _select_device(torch: Any, configured_device: str) -> str:
 
 
 class _TorchDetectionDataset:
-    def __init__(self, samples, *, image_height: int, image_width: int) -> None:
+    def __init__(
+        self,
+        samples,
+        *,
+        image_height: int,
+        image_width: int,
+        multi_scale_augmentation: bool = False,
+    ) -> None:
         self.samples = samples
         self.image_height = image_height
         self.image_width = image_width
+        self.multi_scale_augmentation = multi_scale_augmentation
 
     def __len__(self) -> int:
         return len(self.samples)
@@ -256,20 +268,51 @@ class _TorchDetectionDataset:
         torch = _import_torch()
         sample = self.samples[index]
         image = Image.open(sample.image_path).convert("RGB")
-        original_width, original_height = image.size
-        image = image.resize((self.image_width, self.image_height))
-        image_array = np.asarray(image, dtype=np.float32) / 255.0
+        polygons = [
+            instance.points
+            for instance in sample.instances
+            if instance.ignore == 0
+        ]
+        image_array = np.asarray(image, dtype=np.uint8)
+        original_height, original_width = image_array.shape[:2]
+        if self.multi_scale_augmentation and polygons:
+            scale_factor = float(np.random.choice([0.75, 1.0, 1.25, 1.5]))
+            if scale_factor != 1.0:
+                max_offset_x = max(int(round(original_width * scale_factor)) - original_width, 0)
+                max_offset_y = max(int(round(original_height * scale_factor)) - original_height, 0)
+                if scale_factor >= 1.0:
+                    offset_x = int(np.random.randint(0, max_offset_x + 1)) if max_offset_x else 0
+                    offset_y = int(np.random.randint(0, max_offset_y + 1)) if max_offset_y else 0
+                else:
+                    scaled_width = int(round(original_width * scale_factor))
+                    scaled_height = int(round(original_height * scale_factor))
+                    offset_x = int(
+                        np.random.randint(0, original_width - scaled_width + 1)
+                    )
+                    offset_y = int(
+                        np.random.randint(0, original_height - scaled_height + 1)
+                    )
+                image_array, polygons = _apply_multi_scale_augmentation(
+                    image_array,
+                    polygons,
+                    scale_factor=scale_factor,
+                    offset_x=offset_x,
+                    offset_y=offset_y,
+                )
 
+        image_array = (
+            cv2.resize(image_array, (self.image_width, self.image_height)).astype(np.float32)
+            / 255.0
+        )
         polygons = [
             _scale_polygon(
-                instance.points,
+                polygon,
                 original_width=original_width,
                 original_height=original_height,
                 target_width=self.image_width,
                 target_height=self.image_height,
             )
-            for instance in sample.instances
-            if instance.ignore == 0
+            for polygon in polygons
         ]
         mask_array = rasterize_text_mask(
             image_height=self.image_height,
@@ -299,6 +342,107 @@ def _build_dbnet_tiny(nn: Any) -> Any:
             return self.model(images)
 
     return _Detector()
+
+
+def _build_train_sampler(samples) -> Any:
+    torch = _import_torch()
+    weights = torch.tensor(
+        [_estimate_hard_case_weight(sample) for sample in samples],
+        dtype=torch.double,
+    )
+    return torch.utils.data.WeightedRandomSampler(
+        weights=weights,
+        num_samples=len(weights),
+        replacement=True,
+    )
+
+
+def _estimate_hard_case_weight(sample) -> float:
+    active_instances = [instance for instance in sample.instances if instance.ignore == 0]
+    if not active_instances:
+        return 1.0
+    small_text = any(_polygon_bbox_area(instance.points) <= 400 for instance in active_instances)
+    dense_text = len(active_instances) >= 4
+    rotated_text = any(_is_rotated_polygon(instance.points) for instance in active_instances)
+    weight = 1.0
+    if small_text:
+        weight += 0.75
+    if dense_text:
+        weight += 0.5
+    if rotated_text:
+        weight += 0.5
+    return weight
+
+
+def _polygon_bbox_area(polygon: list[int]) -> float:
+    points = np.asarray(polygon, dtype=np.float32).reshape(4, 2)
+    width = float(points[:, 0].max() - points[:, 0].min())
+    height = float(points[:, 1].max() - points[:, 1].min())
+    return max(width, 0.0) * max(height, 0.0)
+
+
+def _is_rotated_polygon(polygon: list[int]) -> bool:
+    points = np.asarray(polygon, dtype=np.float32).reshape(4, 2)
+    dx = float(points[1, 0] - points[0, 0])
+    dy = float(points[1, 1] - points[0, 1])
+    angle = abs(np.degrees(np.arctan2(dy, dx)))
+    distance_to_axis = min(abs(angle), abs(angle - 90.0), abs(angle - 180.0))
+    return distance_to_axis > 5.0
+
+
+def _apply_multi_scale_augmentation(
+    image_array: np.ndarray,
+    polygons: list[list[int]],
+    *,
+    scale_factor: float,
+    offset_x: int,
+    offset_y: int,
+) -> tuple[np.ndarray, list[list[int]]]:
+    original_height, original_width = image_array.shape[:2]
+    scaled_width = max(int(round(original_width * scale_factor)), 1)
+    scaled_height = max(int(round(original_height * scale_factor)), 1)
+    resized = cv2.resize(image_array, (scaled_width, scaled_height))
+    channels = 1 if image_array.ndim == 2 else image_array.shape[2]
+    if scale_factor >= 1.0:
+        crop_x = min(offset_x, max(scaled_width - original_width, 0))
+        crop_y = min(offset_y, max(scaled_height - original_height, 0))
+        cropped = resized[crop_y : crop_y + original_height, crop_x : crop_x + original_width]
+        transformed_polygons = [
+            _transform_polygon(polygon, scale_factor=scale_factor, shift_x=-crop_x, shift_y=-crop_y)
+            for polygon in polygons
+        ]
+        return cropped, transformed_polygons
+
+    canvas_shape = (
+        (original_height, original_width)
+        if channels == 1
+        else (original_height, original_width, channels)
+    )
+    canvas = np.full(canvas_shape, 255, dtype=image_array.dtype)
+    paste_x = min(offset_x, max(original_width - scaled_width, 0))
+    paste_y = min(offset_y, max(original_height - scaled_height, 0))
+    canvas[paste_y : paste_y + scaled_height, paste_x : paste_x + scaled_width] = resized
+    transformed_polygons = [
+        _transform_polygon(polygon, scale_factor=scale_factor, shift_x=paste_x, shift_y=paste_y)
+        for polygon in polygons
+    ]
+    return canvas, transformed_polygons
+
+
+def _transform_polygon(
+    polygon: list[int],
+    *,
+    scale_factor: float,
+    shift_x: int,
+    shift_y: int,
+) -> list[int]:
+    transformed: list[int] = []
+    for index, value in enumerate(polygon):
+        if index % 2 == 0:
+            transformed.append(int(round(value * scale_factor + shift_x)))
+        else:
+            transformed.append(int(round(value * scale_factor + shift_y)))
+    return transformed
 
 
 def _evaluate_detector(

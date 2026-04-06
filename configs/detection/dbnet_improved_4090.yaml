@@ -1,0 +1,26 @@
+experiment_name: det_dbnet_hardcase_4090
+model_name: dbnet
+dataset_dir: data/raw/rects
+train_manifest: data/processed/detection_splits/train.jsonl
+validation_manifest: data/processed/detection_splits/val.jsonl
+output_root: artifacts/detection/det_dbnet_hardcase_4090
+train_split: train
+val_split: val
+image_extensions:
+  - .jpg
+  - .jpeg
+  - .png
+  - .bmp
+epochs: 40
+batch_size: 24
+learning_rate: 0.0008
+image_height: 512
+image_width: 512
+device: auto
+num_workers: 8
+seed: 2026
+hard_case_sampling: true
+multi_scale_augmentation: true
+description: >
+  RTX 4090 oriented improved detector config.
+  Uses hard-case sampling and multi-scale augmentation on top of the OCR baseline.

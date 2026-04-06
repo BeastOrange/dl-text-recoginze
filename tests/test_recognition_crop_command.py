@@ -26,8 +26,8 @@ def test_prepare_recognition_crops_command_builds_split_manifests(
     exit_code = main(["data", "prepare-recognition-crops"])
 
     assert exit_code == 0
-    assert (tmp_path / "data" / "processed" / "recognition_splits" / "train.jsonl").exists()
-    assert (tmp_path / "data" / "processed" / "charset_zh_mixed.txt").exists()
+    assert (tmp_path / "data" / "processed" / "recognition_crop_splits" / "train.jsonl").exists()
+    assert (tmp_path / "data" / "processed" / "recognition_crop_charset_zh_mixed.txt").exists()
 
 
 def _write_scene_image(path: Path) -> None:

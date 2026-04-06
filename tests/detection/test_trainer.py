@@ -4,8 +4,13 @@ from pathlib import Path
 import pytest
 from PIL import Image, ImageDraw
 
+from dltr.models.detection.dataset import load_detection_samples
 from dltr.models.detection.scaffold import load_detection_run_config
-from dltr.models.detection.trainer import train_dbnet_detector
+from dltr.models.detection.trainer import (
+    _apply_multi_scale_augmentation,
+    _build_train_sampler,
+    train_dbnet_detector,
+)
 from dltr.project import ProjectPaths
 
 torch = pytest.importorskip("torch")
@@ -84,6 +89,61 @@ def test_train_dbnet_detector_runs_smoke_epoch(tmp_path: Path) -> None:
     history_lines = result.history_path.read_text(encoding="utf-8").splitlines()
     assert len(history_lines) == 1
     assert "train_loss" in history_lines[0]
+
+
+def test_build_train_sampler_prefers_hard_cases(tmp_path: Path) -> None:
+    easy_image = tmp_path / "easy.png"
+    hard_image = tmp_path / "hard.png"
+    _write_box_image(easy_image)
+    _write_box_image(hard_image)
+    samples = [
+        {
+            "dataset": "rects",
+            "image_path": str(easy_image),
+            "label_path": str(easy_image.with_suffix(".json")),
+            "instances": [{"points": [4, 4, 28, 4, 28, 28, 4, 28], "text": "营业", "ignore": 0}],
+        },
+        {
+            "dataset": "rects",
+            "image_path": str(hard_image),
+            "label_path": str(hard_image.with_suffix(".json")),
+            "instances": [
+                {"points": [4, 4, 10, 6, 8, 14, 2, 12], "text": "小", "ignore": 0},
+                {"points": [12, 4, 18, 6, 16, 14, 10, 12], "text": "字", "ignore": 0},
+                {"points": [20, 4, 26, 6, 24, 14, 18, 12], "text": "多", "ignore": 0},
+                {"points": [4, 16, 10, 18, 8, 26, 2, 24], "text": "旋", "ignore": 0},
+                {"points": [12, 16, 18, 18, 16, 26, 10, 24], "text": "转", "ignore": 0},
+            ],
+        },
+    ]
+    manifest = tmp_path / "train.jsonl"
+    manifest.write_text(
+        "\n".join(json.dumps(item, ensure_ascii=False) for item in samples) + "\n",
+        encoding="utf-8",
+    )
+    loaded_samples = load_detection_samples(manifest)
+
+    sampler = _build_train_sampler(loaded_samples)
+
+    weights = list(sampler.weights.tolist())
+    assert weights[1] > weights[0]
+
+
+def test_apply_multi_scale_augmentation_changes_polygon_scale() -> None:
+    image = Image.new("RGB", (64, 64), color="white")
+    image_np = __import__("numpy").asarray(image)
+    polygons = [[8, 8, 24, 8, 24, 24, 8, 24]]
+
+    augmented_image, augmented_polygons = _apply_multi_scale_augmentation(
+        image_np,
+        polygons,
+        scale_factor=1.5,
+        offset_x=8,
+        offset_y=6,
+    )
+
+    assert augmented_image.shape == image_np.shape
+    assert augmented_polygons[0] != polygons[0]
 
 
 def _write_box_image(path: Path) -> None:
