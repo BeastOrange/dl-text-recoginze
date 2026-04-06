@@ -10,6 +10,7 @@ import numpy as np
 
 from dltr.models.recognition.metrics import compute_recognition_scores
 from dltr.pipeline.end_to_end import EndToEndLineResult, run_end_to_end_pipeline
+from dltr.terminal import ProgressBar
 
 
 @dataclass(frozen=True)
@@ -65,9 +66,11 @@ def evaluate_end_to_end_manifest(
         for line in manifest_path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+    total_rows = min(len(rows), max_images) if max_images is not None else len(rows)
     image_results: list[EndToEndBaselineImageResult] = []
     item_root = output_dir / "end2end_baseline_items"
     item_root.mkdir(parents=True, exist_ok=True)
+    progress = ProgressBar(total=total_rows, description="系统评估")
 
     for index, payload in enumerate(rows):
         if max_images is not None and index >= max_images:
@@ -104,8 +107,26 @@ def evaluate_end_to_end_manifest(
                 target_texts=target_texts,
             )
         )
+        partial = aggregate_end_to_end_baseline(image_results)
+        progress.update(
+            len(image_results),
+            metrics={
+                "images": len(image_results),
+                "matched": partial.matched_lines,
+                "coverage": partial.detection_coverage,
+                "exact": partial.exact_match_lines,
+            },
+        )
 
     summary = aggregate_end_to_end_baseline(image_results)
+    progress.finish(
+        metrics={
+            "images": summary.total_images,
+            "matched": summary.matched_lines,
+            "coverage": summary.detection_coverage,
+            "exact": summary.exact_match_lines,
+        }
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / "end2end_baseline_summary.json"
     markdown_path = output_dir / "end2end_baseline_summary.md"
