@@ -1,0 +1,21 @@
+experiment_name: transformer_baseline_cn_scene_4090
+model_name: transformer
+dataset_manifest: data/processed/recognition_splits/train.jsonl
+validation_manifest: data/processed/recognition_splits/val.jsonl
+charset_file: data/processed/charset_zh_mixed.txt
+output_dir: artifacts/checkpoints/recognition/transformer_baseline_4090
+epochs: 80
+batch_size: 192
+image_height: 48
+image_width: 320
+learning_rate: 0.0007
+device: auto
+num_workers: 8
+second_pass:
+  enabled: true
+  confidence_threshold: 0.78
+  max_blur_score: 0.45
+  min_contrast_score: 0.35
+  min_text_length: 2
+  min_aspect_ratio: 0.2
+  max_aspect_ratio: 20.0

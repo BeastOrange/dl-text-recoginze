@@ -5,7 +5,11 @@ import pytest
 from PIL import Image, ImageDraw
 
 from dltr.models.recognition.config import load_recognition_config
-from dltr.models.recognition.trainer import train_crnn_recognizer, train_transformer_recognizer
+from dltr.models.recognition.trainer import (
+    _build_runtime_optimizations,
+    train_crnn_recognizer,
+    train_transformer_recognizer,
+)
 from dltr.project import ProjectPaths
 
 torch = pytest.importorskip("torch")
@@ -176,6 +180,24 @@ def test_train_transformer_recognizer_runs_smoke_epoch(tmp_path: Path) -> None:
     assert result.summary_path.exists()
     assert result.report_path.exists()
     assert result.metrics.samples == 2
+
+
+def test_build_runtime_optimizations_enables_cuda_fast_path() -> None:
+    runtime = _build_runtime_optimizations(device="cuda", num_workers=8)
+
+    assert runtime.pin_memory is True
+    assert runtime.use_amp is True
+    assert runtime.loader_kwargs["persistent_workers"] is True
+    assert runtime.loader_kwargs["prefetch_factor"] == 4
+
+
+def test_build_runtime_optimizations_keeps_cpu_path_minimal() -> None:
+    runtime = _build_runtime_optimizations(device="cpu", num_workers=0)
+
+    assert runtime.pin_memory is False
+    assert runtime.use_amp is False
+    assert "persistent_workers" not in runtime.loader_kwargs
+    assert "prefetch_factor" not in runtime.loader_kwargs
 
 
 def _write_text_image(path: Path, text: str) -> None:

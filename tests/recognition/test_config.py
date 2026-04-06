@@ -59,3 +59,15 @@ def test_load_recognition_config_rejects_invalid_model(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="model_name"):
         load_recognition_config(config_path)
+
+
+def test_load_transformer_4090_config_targets_gpu_throughput() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+
+    config = load_recognition_config(
+        repo_root / "configs" / "recognition" / "transformer_4090.yaml"
+    )
+
+    assert config.model_name == "transformer"
+    assert config.batch_size >= 128
+    assert config.num_workers >= 4

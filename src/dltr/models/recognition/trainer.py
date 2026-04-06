@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+from contextlib import nullcontext
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -12,7 +13,10 @@ from PIL import Image
 
 from dltr.models.recognition.charset import CharacterVocabulary
 from dltr.models.recognition.config import RecognitionExperimentConfig
-from dltr.models.recognition.dataset import RecognitionSample, load_recognition_samples
+from dltr.models.recognition.dataset import (
+    RecognitionSample,
+    load_recognition_samples,
+)
 from dltr.models.recognition.evaluation import (
     RecognitionMetrics,
     generate_recognition_evaluation_report,
@@ -34,6 +38,14 @@ class RecognitionTrainingResult:
     summary_path: Path
     report_path: Path
     metrics: RecognitionMetrics
+
+
+@dataclass(frozen=True)
+class RuntimeOptimizations:
+    pin_memory: bool
+    non_blocking: bool
+    use_amp: bool
+    loader_kwargs: dict[str, bool | int]
 
 
 def train_crnn_recognizer(
@@ -124,6 +136,10 @@ def _train_ctc_recognizer(
         shuffle=True,
         num_workers=config.num_workers,
         collate_fn=_collate_ctc_batch,
+        **_build_runtime_optimizations(
+            device=_select_device(torch, config.device),
+            num_workers=config.num_workers,
+        ).loader_kwargs,
     )
     val_loader = data_utils.DataLoader(
         val_dataset,
@@ -131,12 +147,19 @@ def _train_ctc_recognizer(
         shuffle=False,
         num_workers=config.num_workers,
         collate_fn=_collate_ctc_batch,
+        **_build_runtime_optimizations(
+            device=_select_device(torch, config.device),
+            num_workers=config.num_workers,
+        ).loader_kwargs,
     )
 
     device = _select_device(torch, config.device)
+    runtime = _build_runtime_optimizations(device=device, num_workers=config.num_workers)
+    _configure_cuda_backend(torch, device=device)
     model = model_builder(nn=nn, vocabulary_size=vocabulary.size).to(device)
     criterion = nn.CTCLoss(blank=vocabulary.blank_index, zero_infinity=True)
     optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
+    scaler = _build_grad_scaler(torch, use_amp=runtime.use_amp)
     history: list[dict[str, float | int]] = []
     best_word_accuracy = float("-inf")
     metrics = RecognitionMetrics(
@@ -162,21 +185,27 @@ def _train_ctc_recognizer(
             description=f"识别训练 第 {epoch}/{config.epochs} 轮",
         )
         for batch_index, batch in enumerate(train_loader, start=1):
-            images = batch["images"].to(device)
-            targets = batch["targets"].to(device)
-            target_lengths = batch["target_lengths"].to(device)
+            images = batch["images"].to(device, non_blocking=runtime.non_blocking)
+            targets = batch["targets"].to(device, non_blocking=runtime.non_blocking)
+            target_lengths = batch["target_lengths"].to(device, non_blocking=runtime.non_blocking)
 
-            optimizer.zero_grad()
-            log_probs = model(images)
+            optimizer.zero_grad(set_to_none=True)
+            with _autocast_context(torch, use_amp=runtime.use_amp):
+                log_probs = model(images)
             input_lengths = torch.full(
                 size=(images.size(0),),
                 fill_value=log_probs.size(0),
                 dtype=torch.long,
                 device=device,
             )
-            loss = criterion(log_probs, targets, input_lengths, target_lengths)
-            loss.backward()
-            optimizer.step()
+            loss = criterion(log_probs.float(), targets, input_lengths, target_lengths)
+            if scaler is not None:
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                loss.backward()
+                optimizer.step()
             train_loss_total += float(loss.item())
             train_batches += 1
             train_progress.update(batch_index, metrics={"loss": float(loss.item())})
@@ -311,6 +340,49 @@ def _select_device(torch: Any, configured_device: str) -> str:
     if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
         return "mps"
     return "cpu"
+
+
+def _build_runtime_optimizations(device: str, num_workers: int) -> RuntimeOptimizations:
+    is_cuda = device == "cuda"
+    loader_kwargs: dict[str, bool | int] = {
+        "pin_memory": is_cuda,
+    }
+    if num_workers > 0:
+        loader_kwargs["persistent_workers"] = True
+        loader_kwargs["prefetch_factor"] = 4 if is_cuda else 2
+    return RuntimeOptimizations(
+        pin_memory=is_cuda,
+        non_blocking=is_cuda,
+        use_amp=is_cuda,
+        loader_kwargs=loader_kwargs,
+    )
+
+
+def _configure_cuda_backend(torch: Any, *, device: str) -> None:
+    if device != "cuda":
+        return
+    if hasattr(torch.backends, "cudnn"):
+        torch.backends.cudnn.benchmark = True
+        if hasattr(torch.backends.cudnn, "allow_tf32"):
+            torch.backends.cudnn.allow_tf32 = True
+    if hasattr(torch.backends, "cuda") and hasattr(torch.backends.cuda, "matmul"):
+        torch.backends.cuda.matmul.allow_tf32 = True
+    if hasattr(torch, "set_float32_matmul_precision"):
+        torch.set_float32_matmul_precision("high")
+
+
+def _build_grad_scaler(torch: Any, *, use_amp: bool) -> Any | None:
+    if not use_amp:
+        return None
+    if hasattr(torch, "amp") and hasattr(torch.amp, "GradScaler"):
+        return torch.amp.GradScaler("cuda", enabled=True)
+    return torch.cuda.amp.GradScaler(enabled=True)
+
+
+def _autocast_context(torch: Any, *, use_amp: bool) -> Any:
+    if not use_amp:
+        return nullcontext()
+    return torch.autocast(device_type="cuda", dtype=torch.float16)
 
 
 class _TorchRecognitionDataset:
