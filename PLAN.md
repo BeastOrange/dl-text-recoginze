@@ -1,109 +1,148 @@
-# 中文自然场景文本识别与语义分析毕业设计实施方案
+# 基于深度学习的中文自然场景文本检测与识别系统毕业设计实施方案
 
-## 1. 项目目标
+## 1. 项目定位
 
-本项目从零搭建一个完整的中文自然场景文本智能分析系统，覆盖以下链路：
+本项目的**主线任务**只有两条：
 
 1. 中文自然场景文本检测
+2. 中文自然场景文本识别
+
+项目的**方法定位**是深度学习，不是语义任务项目。  
+因此，毕业设计的核心口径统一为：
+
+- 这是一个基于深度学习的 OCR 项目
+- 主体工作围绕检测与识别展开
+- OCR 后规则理解仅作为扩展章节，用于回应老师提出的“加入理解能力”的要求
+
+## 2. 项目目标
+
+本项目要完成一个完整、可训练、可演示、可答辩的中文自然场景文本系统，覆盖：
+
+1. 中文文本区域检测
 2. 中文文本识别
-3. OCR 后语义分析与结构化抽取
-4. 英文可视化报告与对比实验
-5. Mac 开发、Linux GPU 训练、Windows 演示推理的跨平台交付
+3. 端到端推理与可视化展示
+4. Mac 开发、Linux GPU 训练、Windows 推理交付
+5. 英文图表与实验报告输出
 
-项目需要正面回应老师指出的问题：
+项目需要正面回应老师的三项要求：
 
-- 不能只做普通 OCR，必须实现自然场景识别
+- 不能只做普通 OCR，必须实现自然场景文本识别
 - 工作量必须充足，不能停留在简单模型调用
-- 必须加入语义分析，证明系统具有“识别 + 理解”的能力
+- 需要体现一定的“识别后理解”能力，但不再把语义任务写成并列主线
 
-## 2. 总体技术路线
+## 3. 总体技术路线
 
-### 2.1 研究主线
+### 3.1 研究主线
 
 - 开发语言：Python
 - 包管理器：uv
-- 主框架：PyTorch
+- 深度学习框架：PyTorch
 - 本地开发：Mac
-- 训练环境：Linux + RTX 5090
-- 客户交付：Windows，支持 CPU 和 CUDA 推理
+- 训练环境：Linux + RTX 4090 / 5090 级 GPU
+- 客户交付：Windows，支持 CPU 与 CUDA 推理
 
-### 2.2 系统架构
+### 3.2 系统结构
 
-系统分为五层：
+系统按四层主线展开：
 
 1. 数据层：数据校验、格式转换、EDA、hard-case 分析
 2. 检测层：定位自然场景中的中文文本区域
-3. 识别层：对文本区域做矫正与中文识别
-4. 语义层：分类、关键词提取、槽位抽取
-5. 展示层：英文可视化报告与英文 demo
+3. 识别层：对文本区域做裁剪、矫正与识别
+4. 展示层：端到端推理、英文报告、中文演示界面
 
-### 2.3 模型路线
+另设一个**扩展层**：
 
-- 检测基线：DBNet
-- 检测改进：DBNet + 中文 hard-case 感知训练策略
-- 识别基线：CRNN-CTC
-- 主识别模型：TransOCR
-- 识别增强：置信度驱动的选择性二次识别
-- 语义分类：Chinese MacBERT
-- 结构化抽取：规则 + 分词 + 正则
+5. OCR 后规则理解扩展：关键词、时间、电话、价格、警示词等结构化抽取
 
-## 3. 中文数据集方案
+说明：
 
-本项目全面转为中文数据集，目标语言范围为：
+- 扩展层不是项目主任务
+- 扩展层不参与主实验主榜排名
+- 扩展层主要用于答辩展示“识别后理解能力”
 
-- 简体中文为主
-- 同时支持数字、英文字母和常见符号
+## 4. 模型方案
 
-### 3.1 检测数据
+### 4.1 主线模型
 
-优先选择以下公开中文自然场景数据：
+- 检测主线：DBNet
+- 识别主线：CRNN-CTC
 
-- ReCTS（当前主检测数据集，优先保证可用）
-- RCTW-17（可选增强集）
-- ShopSign
-- CTW（可选增强集）
-- MTWI 2018（可选增强集）
+选择依据：
 
-### 3.2 识别数据
+- 可真实训练
+- 可稳定复现
+- 与当前仓库代码和数据处理链路一致
+- 能支持后续创新点实验与答辩展示
 
-识别数据优先来源：
+### 4.2 降级为备选或展望的模型
 
-- FudanVI Chinese Text Recognition Benchmark 的场景识别基准（当前主识别数据）
-- 从 ReCTS、ShopSign、MTWI 标注中重新裁剪识别样本
-- text_renderer 合成中文长尾样本
+以下内容不再写入主线验收方案：
 
-### 3.3 语义数据
+- TransOCR 不再作为主识别模型
+- MacBERT 不再作为核心训练模块
+- 独立语义分类模型不再作为主实验主线
 
-基于上述中文场景数据人工构建 thesis 专用语义子集 `CN-SceneText-Sem`。
+这些内容只保留为：
 
-固定语义类别：
+- 预研路线
+- 备选增强
+- 展望章节
 
-- `shop_sign`
-- `advertisement`
-- `public_notice`
-- `traffic_or_warning`
-- `service_info`
-- `other`
+## 5. 数据集方案
 
-固定结构化字段：
+### 5.1 主检测数据集
 
-- `keywords`
-- `phone`
-- `price`
-- `time`
-- `location_hint`
-- `warning_terms`
+优先使用以下公开中文自然场景数据：
 
-### 3.4 数据下载策略
+- ReCTS：主检测数据集
+- ShopSign：主补充数据集
 
-数据下载由用户手动完成。代码仅负责：
+可选增强：
 
-- 路径校验
-- 目录结构检查
-- 数据清洗与格式转换
-- 分析与建模
+- MTWI 2018
+- RCTW-17
+- CTW
 
-所有手动下载的数据都应物理整理到 `data/raw/` 下，不在仓库根目录长期散放。
+说明：
+
+- `ReCTS + ShopSign` 足以支撑本项目主线实验
+- 其他数据集属于增强项，不作为主线阻塞条件
+
+### 5.2 主识别数据来源
+
+识别数据采用两类来源：
+
+1. 由检测标注裁剪得到的真实场景文本行样本
+2. 已有中文识别公开数据或少量合成样本作为补充
+
+当前主线识别数据优先依赖：
+
+- 从 ReCTS 标注中裁剪得到的识别样本
+- 从 ShopSign 标注中裁剪得到的识别样本
+
+### 5.3 为什么不把 OCR 数据集直接当作语义监督数据集
+
+当前 OCR 数据集已经标注好，但它们的标注内容主要是：
+
+- 文本框坐标
+- 文本转写内容
+
+这些标注天然适用于：
+
+- 检测训练
+- 识别训练
+
+但它们并不天然提供：
+
+- 语义类别标签
+- 实体边界
+- 结构化键值关系
+
+因此，本项目不再把“语义监督训练”写成主线目标，而是把 OCR 后理解能力改成**规则扩展能力**。
+
+### 5.4 数据目录约定
+
+所有手动下载的数据物理整理到 `data/raw/` 下。
 
 默认目录：
 
@@ -116,24 +155,17 @@
 - `data/raw/text_renderer_corpus/`
 - `data/interim/`
 - `data/processed/`
-- `data/semantic/cn_scenetext_sem/`
 
-当前下载优先级：
+说明：
 
-- `P0`: `ReCTS`
-- `P0`: `FudanVI scene lmdb`
-- `P1`: `ShopSign`
-- `P1`: `MTWI`
-- `P2`: `RCTW-17`
-- `P2`: `CTW`
+- `data/semantic/` 仅保留为历史实验或扩展模块目录
+- 不再把 `data/semantic/` 写成主线数据依赖
 
-若 `RCTW-17` 和 `CTW` 无法下载，不阻塞项目推进。当前实现按 `ReCTS-first` 路线执行。
+## 6. 创新点设计
 
-## 4. 创新点设计
+### 6.1 创新点一：中文 hard-case 感知训练与评估
 
-### 4.1 创新点一：中文 hard-case 感知训练策略
-
-围绕以下中文自然场景难例建立专项训练与评估：
+围绕以下中文自然场景难例建立专项分析与实验：
 
 - 小字
 - 密集字
@@ -144,134 +176,137 @@
 - 强反光字
 - 艺术字体
 
-改进方式：
+实现方式：
 
+- hard-case 样本统计
+- hard-case 样本画廊
 - hard-case 过采样
-- multi-scale crop augmentation
-- dense/small-text oriented training strategy
-- hard-case 子集单独报表
+- 多尺度增强
+- hard-case 单独评估报表
 
-### 4.2 创新点二：选择性二次识别增强
+### 6.2 创新点二：选择性二次识别增强
 
-系统先执行第一遍识别，再根据置信度、清晰度、文本长度等指标判断是否需要二次识别。
+系统先完成第一遍识别，再根据低置信度样本触发第二遍识别增强。
 
-二次识别前处理：
+二次识别前处理固定为：
 
 - 几何矫正
 - 对比度增强
 - 轻量锐化
-- 可选超分
 
 实验比较三组：
 
 - 不做二次识别
-- 所有样本都二次识别
-- 仅低置信度样本二次识别
+- 全量样本都做二次识别
+- 仅低置信度样本做二次识别
 
-### 4.3 创新点三：OCR 后语义分析
+### 6.3 创新点三：OCR 后规则理解扩展
 
-系统不仅输出识别文本，还继续进行：
+本项目不把语义分类写成主线训练任务，而是将“理解能力”落实为 OCR 后规则化扩展：
 
-- 文本类别判别
 - 关键词提取
-- 结构化字段抽取
-- 语义结果展示
+- 时间抽取
+- 电话抽取
+- 价格抽取
+- 警示词抽取
+- 场景提示信息抽取
 
-这部分直接回应“加入语义分析”的要求。
+输出字段统一为：
 
-## 5. 实验设计
+- `keywords`
+- `phone`
+- `price`
+- `time`
+- `location_hint`
+- `warning_terms`
 
-### 5.1 检测实验
+该模块仅作为扩展章节，用于展示“识别后理解”能力。
+
+## 7. 实验设计
+
+### 7.1 检测实验
 
 - `Det-B0`: DBNet baseline
 - `Det-B1`: DBNet + hard-case sampling
-- `Det-B2`: DBNet + hard-case sampling + multi-scale crop augmentation
-- `Det-B3`: DBNet + 全部改进策略
+- `Det-B2`: DBNet + hard-case sampling + multi-scale augmentation
 
 指标：
 
 - Precision
 - Recall
-- Hmean(F1)
+- Hmean
 
-### 5.2 识别实验
+### 7.2 识别实验
 
 - `Rec-B0`: CRNN baseline
-- `Rec-B1`: TransOCR baseline
-- `Rec-B2`: TransOCR + hard-case recognition sampling
-- `Rec-B3`: TransOCR + selective second-pass refinement
+- `Rec-B1`: CRNN + hard-case sample rebalance
+- `Rec-B2`: CRNN + selective second-pass refinement
 
 指标：
 
-- Accuracy
+- Word Accuracy
 - CER
 - NED
-- Edit Distance
+- Mean Edit Distance
 
-### 5.3 语义实验
+### 7.3 系统级实验
 
-- `Sem-B0`: rule-based keyword baseline
-- `Sem-B1`: MacBERT semantic classifier
-- `Sem-B2`: MacBERT + slot extraction
-
-指标：
-
-- Accuracy
-- Macro-F1
-- Micro-F1
-
-### 5.4 系统级实验
-
-- `Sys-B0`: Detection + CRNN
-- `Sys-B1`: Detection + TransOCR
-- `Sys-B2`: Detection + TransOCR + semantic analysis + second-pass refinement
+- `Sys-B0`: Detection + Recognition baseline
+- `Sys-B1`: Detection + Recognition + hard-case enhancement
+- `Sys-B2`: Detection + Recognition + second-pass refinement
 
 指标：
 
-- end-to-end line accuracy
-- latency
+- End-to-End line accuracy
+- Latency
 - FPS
-- CPU/GPU comparison
+- CPU / GPU comparison
 
-## 6. 可视化要求
+### 7.4 扩展章节实验
+
+该部分不进入主榜，只作为扩展展示：
+
+- OCR 后规则抽取案例展示
+- 典型成功案例
+- 典型失败案例
+- 识别错误如何影响结构化抽取结果
+
+## 8. 可视化要求
 
 所有图表默认使用英文标题、英文坐标轴、英文图例。
 
-### 6.1 数据阶段
+### 8.1 数据阶段
 
 - dataset overview
-- class/source distribution
+- source distribution
 - text length distribution
 - polygon area distribution
 - orientation distribution
 - hard-case distribution
 - sample gallery
 
-### 6.2 数据处理阶段
+### 8.2 数据处理阶段
 
 - raw vs cleaned comparison
 - crop quality gallery
 - augmentation gallery
-- semantic subset statistics
 
-### 6.3 训练阶段
+### 8.3 训练阶段
 
-- train/val loss curves
-- learning rate curves
-- precision/recall/F1 curves
-- CER/NED curves
+- train / val loss curves
+- precision / recall / Hmean curves
+- CER / NED curves
 - confidence histogram
 
-### 6.4 评估阶段
+### 8.4 评估阶段
 
-- confusion matrix
 - hard-case comparison chart
 - ablation chart
 - latency chart
-- qualitative success/failure gallery
+- qualitative success / failure gallery
 - end-to-end pipeline examples
 
-## 7. 工程结构
+## 9. 工程结构与主线命令
 
 ```text
 .
@@ -287,72 +322,67 @@
 └── .github/workflows/
 ```
 
-CLI 目标接口：
+主线 CLI：
 
 - `uv run python scripts/run_dltr.py data validate`
 - `uv run python scripts/run_dltr.py data stats`
-- `uv run python scripts/run_dltr.py data build-rec-lmdb`
+- `uv run python scripts/run_dltr.py data prepare-detection`
+- `uv run python scripts/run_dltr.py data prepare-recognition-crops`
 - `uv run python scripts/run_dltr.py train detector`
 - `uv run python scripts/run_dltr.py train recognizer`
-- `uv run python scripts/run_dltr.py train semantic`
 - `uv run python scripts/run_dltr.py evaluate detector`
 - `uv run python scripts/run_dltr.py evaluate recognizer`
-- `uv run python scripts/run_dltr.py evaluate semantic`
 - `uv run python scripts/run_dltr.py evaluate end2end`
 - `uv run python scripts/run_dltr.py export onnx`
 - `uv run python scripts/run_dltr.py demo`
 - `uv run python scripts/run_dltr.py sync linux`
 
+扩展 CLI：
+
+- `uv run python scripts/run_dltr.py data prepare-semantic`
+- `uv run python scripts/run_dltr.py train semantic`
+- `uv run python scripts/run_dltr.py evaluate semantic`
+
 说明：
 
-- 当前项目在本地 `uv` 环境中默认采用 `uv run python scripts/run_dltr.py ...` 作为稳定入口。
-- 这样可以避免依赖 `uv` editable console script 的行为细节。
+- 扩展 CLI 保留是为了兼容历史实验与附录
+- 扩展 CLI 不再属于主线验收链路
 
-## 8. 跨平台策略
+## 10. 跨平台策略
 
-### 8.1 Mac
+### 10.1 Mac
 
 - 日常开发
 - 数据探索
-- 可视化生成
-- CPU/MPS smoke test
+- 报告与图表生成
+- CPU / MPS smoke test
 
-### 8.2 Linux + RTX 5090
+### 10.2 Linux + RTX GPU
 
 - 正式训练
 - 批量评估
-- 导出权重与 ONNX
+- 权重导出与推理验证
 
 代码同步方式：
 
 - `rsync + ssh`
 
-### 8.3 Windows
+### 10.3 Windows
 
-- 运行英文 demo
-- 跑 CPU / CUDA 推理
-- 展示结果和评估
+- 运行中文前端演示
+- 执行 CPU / CUDA 推理
+- 展示识别与结构化输出结果
 
 Windows 默认不承担正式训练。
 
-## 9. 过程治理
+## 11. 过程治理
 
-### 9.1 GitHub
+### 11.1 GitHub
 
 - 所有可验证改动必须提交到 GitHub
 - 每次改动都必须增加一条 `change_records/*.md`
 
-### 9.2 change_records 模板
-
-每条记录至少包含：
-
-- `Summary`
-- `Why`
-- `Files Changed`
-- `Verification`
-- `Next`
-
-### 9.3 提交信息
+### 11.2 提交信息
 
 格式：
 
@@ -364,76 +394,97 @@ Windows 默认不承担正式训练。
 - `feat(cli): 搭建项目命令行入口`
 - `test(core): 补充路径校验单元测试`
 
-## 10. 阶段拆分
+## 12. 阶段拆分
 
 ### 阶段一：项目底座
 
 - 初始化仓库
-- 建立 uv 项目
+- 建立 uv 工程
 - 搭建 CLI 骨架
 - 建立 change_records 规范
-- 建立 CI 和同步脚本
+- 建立 CI 与同步脚本
 
 ### 阶段二：数据治理与 EDA
 
 - 数据目录校验
 - 标注转换
-- 统计分析
+- 数据统计分析
 - hard-case 分析
 - 英文图表生成
 
-### 阶段三：检测模块
+### 阶段三：检测主线
 
 - DBNet baseline
-- 中文自然场景检测实验
+- 检测训练与评估
 - 检测可视化
 
-### 阶段四：识别模块
+### 阶段四：识别主线
 
 - CRNN baseline
-- TransOCR baseline
-- 中文识别训练与评估
+- 识别训练与评估
+- 二次识别增强实验
 
 ### 阶段五：创新点增强
 
-- hard-case 策略
-- selective second-pass refinement
+- hard-case 策略实验
+- 二次识别策略实验
 - 消融实验
 
-### 阶段六：语义分析
-
-- 语义分类
-- 结构化字段抽取
-- OCR 后语义评估
-
-### 阶段七：系统集成与交付
+### 阶段六：系统集成与交付
 
 - 端到端 pipeline
 - ONNX 导出
 - Windows demo
 - 最终英文图表与答辩材料
 
-## 11. 当前实现策略
+### 阶段七：扩展章节
 
-当前仓库从零构建，不接入客户已有代码。先完成以下基础能力：
+- OCR 后规则理解案例
+- 结构化字段展示
+- 成功 / 失败案例分析
 
-1. `PLAN.md` 主计划文件
+## 13. 答辩验收口径
+
+答辩时的主结论只能来自以下部分：
+
+- 检测实验
+- 识别实验
+- 系统级实验
+- 工程化交付与展示
+
+扩展章节的结论只能作为：
+
+- 理解能力补充展示
+- 失败案例分析
+- 系统扩展能力说明
+
+不能把扩展章节当作项目主榜核心结论。
+
+## 14. 当前仓库实现策略
+
+当前仓库从零构建，不接入客户已有代码。当前主线优先级为：
+
+1. `PLAN.md` 总方案
 2. uv 工程骨架
 3. CLI 与公共路径工具
 4. 数据校验、EDA 和报告生成
-5. 检测/识别/语义模块骨架
+5. 检测与识别主线训练
 6. Windows bootstrap 与 Linux rsync 脚本
 7. CI、测试和 change_records
 
-## 12. 参考资料
+说明：
+
+- 语义相关代码目前保留在仓库中，视为历史 baseline 与扩展模块
+- 这些代码不再决定项目主线方向
+
+## 15. 参考资料
 
 - uv: https://docs.astral.sh/uv/
 - PyTorch: https://docs.pytorch.org/get-started/locally/
 - DBNet: https://github.com/MhLiao/DB
-- RCTW-17: https://arxiv.org/abs/1708.09585
 - ReCTS: https://arxiv.org/abs/1912.09641
 - ShopSign: https://arxiv.org/abs/1903.10412
+- RCTW-17: https://arxiv.org/abs/1708.09585
 - CTW: https://cg.cs.tsinghua.edu.cn/people/~kun/2019ctw/ctw_jcst.pdf
 - FudanVI Chinese Text Recognition Benchmark: https://github.com/FudanVI/benchmarking-chinese-text-recognition
 - Benchmark paper: https://arxiv.org/abs/2112.15093
-- MacBERT: https://huggingface.co/hfl/chinese-macbert-base

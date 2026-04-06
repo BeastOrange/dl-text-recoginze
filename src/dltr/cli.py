@@ -37,7 +37,10 @@ Handler = Callable[[argparse.Namespace], int]
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dltr",
-        description="Chinese scene text recognition and semantic analysis toolkit.",
+        description=(
+            "Chinese scene text detection and recognition toolkit "
+            "with OCR post-processing extensions."
+        ),
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 

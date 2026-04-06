@@ -36,8 +36,8 @@ def render_streamlit_app() -> None:
         page_icon="OCR",
         layout="wide",
     )
-    st.title("中文场景文本识别演示系统")
-    st.caption("在一个界面中查看检测、识别、语义分析与实验报告。")
+    st.title("中文场景文本检测与识别演示系统")
+    st.caption("在一个界面中查看检测、识别、OCR 后规则理解扩展与实验报告。")
 
     left, right = st.columns((1.2, 1))
 
@@ -67,12 +67,12 @@ def render_streamlit_app() -> None:
         else:
             st.info("暂未发现端到端预览结果。")
 
-        st.subheader("语义分析示例")
+        st.subheader("OCR 后规则理解示例")
         demo_report = reports_dir / "demo_assets" / "demo_preview_semantic_eval.md"
         if demo_report.exists():
             st.markdown(demo_report.read_text(encoding="utf-8"))
         else:
-            st.info("暂未发现语义分析示例报告。")
+            st.info("暂未发现 OCR 后规则理解示例报告。")
 
     with right:
         st.subheader("训练报告")
