@@ -23,7 +23,9 @@ def build_project_training_summary(
     payload = {
         "detection": detection,
         "recognition": recognition,
-        "semantic": semantic,
+        "extensions": {
+            "legacy_semantic": semantic,
+        },
     }
     json_path = output_dir / "project_training_summary.json"
     markdown_path = output_dir / "project_training_summary.md"
@@ -52,7 +54,10 @@ def build_project_training_summary(
             + (
                 [
                     "",
-                    "## Semantic",
+                    "## Extension Baselines",
+                    "",
+                    "> The following results are extension-only baselines",
+                    "> and are not part of the OCR mainline conclusion.",
                     "",
                 ]
                 + [

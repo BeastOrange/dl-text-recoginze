@@ -8,11 +8,14 @@ from dltr.demo.runtime import resolve_demo_checkpoints, run_uploaded_inference
 
 def discover_report_files(reports_dir: Path) -> dict[str, list[Path]]:
     train_dir = reports_dir / "train"
+    extension_dir = reports_dir / "extensions"
     eval_dir = reports_dir / "eval"
     eda_dir = reports_dir / "eda"
     return {
         "train_markdown": sorted(train_dir.glob("*.md")) if train_dir.exists() else [],
         "train_png": sorted(train_dir.glob("*.png")) if train_dir.exists() else [],
+        "extension_markdown": sorted(extension_dir.glob("*.md")) if extension_dir.exists() else [],
+        "extension_png": sorted(extension_dir.glob("*.png")) if extension_dir.exists() else [],
         "eval_json": sorted(eval_dir.glob("*.json")) if eval_dir.exists() else [],
         "eda_markdown": sorted(eda_dir.glob("*.md")) if eda_dir.exists() else [],
     }
@@ -93,6 +96,25 @@ def render_streamlit_app() -> None:
                 format_func=lambda path: path.name,
             )
             st.image(str(selected_png), caption=selected_png.name)
+
+        st.subheader("扩展模块报告")
+        if files["extension_markdown"]:
+            selected_extension = st.selectbox(
+                "选择扩展报告",
+                files["extension_markdown"],
+                format_func=lambda path: path.name,
+            )
+            st.markdown(selected_extension.read_text(encoding="utf-8"))
+        else:
+            st.info("暂未发现扩展模块报告。")
+
+        if files["extension_png"]:
+            selected_extension_png = st.selectbox(
+                "选择扩展曲线图",
+                files["extension_png"],
+                format_func=lambda path: path.name,
+            )
+            st.image(str(selected_extension_png), caption=selected_extension_png.name)
 
         st.subheader("数据分析报告")
         if files["eda_markdown"]:

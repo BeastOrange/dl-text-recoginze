@@ -28,11 +28,12 @@ def build_ablation_overview(
     bars = {
         "detection": detection[0]["primary_metric"] if detection else 0.0,
         "recognition": recognition[0]["primary_metric"] if recognition else 0.0,
-        "semantic": semantic[0]["primary_metric"] if semantic else 0.0,
     }
+    if semantic:
+        bars["extension"] = semantic[0]["primary_metric"]
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.bar(list(bars.keys()), list(bars.values()))
-    ax.set_title("Task-Level Primary Metric Overview")
+    ax.set_title("OCR Mainline Primary Metric Overview")
     ax.set_ylabel("Primary Metric")
     fig.tight_layout()
     fig.savefig(png_path, dpi=160)
@@ -43,12 +44,16 @@ def build_ablation_overview(
             [
                 "# Ablation Overview",
                 "",
+                "> Detection and recognition are the OCR mainline tasks.",
+                "> Extension modules are listed separately and do not define",
+                "> the mainline conclusion.",
+                "",
                 "| Task | Primary Metric |",
                 "|---|---:|",
                 f"| detection | {bars['detection']:.6f} |",
                 f"| recognition | {bars['recognition']:.6f} |",
-                f"| semantic | {bars['semantic']:.6f} |",
             ]
+            + ([f"| extension | {bars['extension']:.6f} |"] if "extension" in bars else [])
         )
         + "\n",
         encoding="utf-8",

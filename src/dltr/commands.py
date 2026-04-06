@@ -621,6 +621,7 @@ def cmd_report_build_ablation_overview(args: argparse.Namespace) -> int:
 def cmd_report_build_all(args: argparse.Namespace) -> int:
     root = ProjectPaths.from_root().root
     output_dir = _resolve_output_path(args.output_dir, ProjectPaths.from_root().reports / "train")
+    extension_dir = ProjectPaths.from_root().reports / "extensions"
     print_stage_header("开始构建训练汇总报告", [("输出目录", output_dir)])
 
     detection_root = root / "artifacts" / "detection"
@@ -673,7 +674,7 @@ def cmd_report_build_all(args: argparse.Namespace) -> int:
     if semantic_runs:
         outputs = aggregate_training_runs(
             run_dirs=semantic_runs,
-            output_dir=output_dir,
+            output_dir=extension_dir,
             task_name="semantic",
             primary_metric="accuracy",
         )
@@ -681,8 +682,8 @@ def cmd_report_build_all(args: argparse.Namespace) -> int:
         generated.extend(outputs.values())
         generated.append(
             build_ablation_template(
-                output_dir=output_dir,
-                task_name="semantic",
+                output_dir=extension_dir,
+                task_name="semantic_extension",
                 experiments=[run.name for run in semantic_runs],
             )
         )

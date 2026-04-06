@@ -54,9 +54,11 @@ def test_report_build_all_command_generates_report_suite(tmp_path, monkeypatch) 
     assert exit_code == 0
     assert (tmp_path / "reports" / "train" / "detection_summary.json").exists()
     assert (tmp_path / "reports" / "train" / "recognition_summary.json").exists()
-    assert (tmp_path / "reports" / "train" / "semantic_summary.json").exists()
     assert (tmp_path / "reports" / "train" / "project_training_summary.md").exists()
     assert (tmp_path / "reports" / "train" / "index.md").exists()
     assert (tmp_path / "reports" / "train" / "detection_ablation_template.md").exists()
     assert (tmp_path / "reports" / "train" / "recognition_ablation_template.md").exists()
-    assert (tmp_path / "reports" / "train" / "semantic_ablation_template.md").exists()
+    assert (tmp_path / "reports" / "extensions" / "semantic_summary.json").exists()
+    assert (
+        tmp_path / "reports" / "extensions" / "semantic_extension_ablation_template.md"
+    ).exists()

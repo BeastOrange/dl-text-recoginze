@@ -20,6 +20,8 @@ def test_discover_report_files_collects_expected_sections(tmp_path: Path) -> Non
 
     assert "train_markdown" in files
     assert "train_png" in files
+    assert "extension_markdown" in files
+    assert "extension_png" in files
     assert "eval_json" in files
     assert "eda_markdown" in files
 
