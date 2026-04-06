@@ -56,6 +56,7 @@ from dltr.pipeline.checkpoints import (
     resolve_best_checkpoint,
 )
 from dltr.pipeline.end_to_end import run_end_to_end_pipeline
+from dltr.pipeline.end_to_end_baseline import evaluate_end_to_end_manifest
 from dltr.post_ocr import (
     PostOCRPrediction,
     analyze_scene_text,
@@ -789,6 +790,33 @@ def cmd_evaluate_recognizer(args: argparse.Namespace) -> int:
 
 
 def cmd_evaluate_end2end(args: argparse.Namespace) -> int:
+    if args.manifest:
+        detector_checkpoint = _resolve_end_to_end_checkpoint(
+            task_name="detection",
+            checkpoint=args.detector_checkpoint,
+            run_dir=args.detector_run_dir,
+        )
+        recognizer_checkpoint = _resolve_end_to_end_checkpoint(
+            task_name="recognition",
+            checkpoint=args.recognizer_checkpoint,
+            run_dir=args.recognizer_run_dir,
+        )
+        outputs = evaluate_end_to_end_manifest(
+            manifest_path=_resolve_existing_path_arg(args.manifest),
+            output_dir=_resolve_output_path(
+                args.output_dir,
+                ProjectPaths.from_root().reports / "eval",
+            ),
+            detector_checkpoint=detector_checkpoint,
+            recognizer_checkpoint=recognizer_checkpoint,
+            max_images=args.max_images,
+            detector_threshold=args.detector_threshold,
+            min_area=args.min_area,
+        )
+        print(f"json={outputs['json']}")
+        print(f"markdown={outputs['markdown']}")
+        return 0
+
     if args.image:
         detector_checkpoint = _resolve_end_to_end_checkpoint(
             task_name="detection",

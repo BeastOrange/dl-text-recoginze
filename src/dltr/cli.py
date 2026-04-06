@@ -145,6 +145,8 @@ def build_parser() -> argparse.ArgumentParser:
     eval_end2end.add_argument("--analysis-label")
     eval_end2end.add_argument("--output")
     eval_end2end.add_argument("--image")
+    eval_end2end.add_argument("--manifest")
+    eval_end2end.add_argument("--max-images", type=int)
     eval_end2end.add_argument("--detector-checkpoint")
     eval_end2end.add_argument("--detector-run-dir")
     eval_end2end.add_argument("--recognizer-checkpoint")
