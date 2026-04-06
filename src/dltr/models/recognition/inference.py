@@ -8,6 +8,7 @@ import numpy as np
 
 from dltr.models.recognition.charset import CharacterVocabulary
 from dltr.models.recognition.trainer import _build_recognizer_model, _import_torch, _select_device
+from dltr.torch_checkpoint import load_torch_checkpoint
 
 
 @dataclass(frozen=True)
@@ -22,7 +23,7 @@ def recognize_crop(
     checkpoint_path: Path,
 ) -> RecognitionPrediction:
     torch = _import_torch()
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    checkpoint = load_torch_checkpoint(torch, checkpoint_path, map_location="cpu")
     config = checkpoint.get("config", {})
     model_name = str(config.get("model_name", "crnn")).strip().lower() or "crnn"
     image_height = int(config.get("image_height", 48))

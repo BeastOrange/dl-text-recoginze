@@ -18,6 +18,7 @@ from dltr.models.recognition.refinement import (
 from dltr.models.recognition.trainer import _import_torch
 from dltr.post_ocr.classification import analyze_scene_text
 from dltr.post_ocr.slots import PostOCRSlots, extract_post_ocr_slots
+from dltr.torch_checkpoint import load_torch_checkpoint
 
 
 @dataclass(frozen=True)
@@ -280,7 +281,7 @@ def _load_second_pass_policy(recognizer_checkpoint: Path) -> SecondPassConfig:
     if not recognizer_checkpoint.exists():
         return SecondPassConfig()
     torch = _import_torch()
-    checkpoint = torch.load(recognizer_checkpoint, map_location="cpu")
+    checkpoint = load_torch_checkpoint(torch, recognizer_checkpoint, map_location="cpu")
     raw = checkpoint.get("config", {}).get("second_pass", {})
     policy = SecondPassConfig(
         enabled=bool(raw.get("enabled", True)),

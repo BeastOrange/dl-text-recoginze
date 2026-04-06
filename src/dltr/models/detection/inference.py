@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 
 from dltr.models.detection.trainer import _build_dbnet_tiny, _import_torch, _select_device
+from dltr.torch_checkpoint import load_torch_checkpoint
 
 
 @dataclass(frozen=True)
@@ -23,7 +24,7 @@ def predict_text_regions(
     min_area: float = 32.0,
 ) -> list[DetectionPrediction]:
     torch = _import_torch()
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    checkpoint = load_torch_checkpoint(torch, checkpoint_path, map_location="cpu")
     config = checkpoint.get("config", {})
     image_height = int(config.get("image_height", 256))
     image_width = int(config.get("image_width", 256))
