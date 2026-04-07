@@ -14,7 +14,7 @@ from dltr.models.recognition.metrics import compute_recognition_scores
 from dltr.pipeline.end_to_end import (
     EndToEndLineResult,
     _load_second_pass_policy,
-    infer_end_to_end_image,
+    infer_end_to_end_image_detailed,
 )
 from dltr.terminal import ProgressBar
 
@@ -44,6 +44,7 @@ class EndToEndBaselineImageResult:
     correct_matches: list[MatchedLine] = field(default_factory=list)
     wrong_matches: list[MatchedLine] = field(default_factory=list)
     missed_gt_texts: list[str] = field(default_factory=list)
+    runtime_metrics: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,13 @@ class EndToEndBaselineSummary:
     matched_cer: float
     matched_ned: float
     matched_mean_edit_distance: float
+    total_latency_ms: float
+    avg_latency_ms: float
+    avg_detector_latency_ms: float
+    avg_recognizer_latency_ms: float
+    avg_second_pass_latency_ms: float
+    avg_post_ocr_latency_ms: float
+    fps: float
 
 
 DEFAULT_SWEEP_THRESHOLDS = (0.3, 0.4, 0.5)
@@ -68,8 +76,9 @@ def evaluate_end_to_end_manifest(
     *,
     manifest_path: Path,
     output_dir: Path,
-    detector_checkpoint: Path,
-    recognizer_checkpoint: Path,
+    detector_checkpoint: Path | None,
+    recognizer_checkpoint: Path | None,
+    end2end_checkpoint: Path | None = None,
     max_images: int | None = None,
     detector_threshold: float = 0.5,
     min_area: float = 32.0,
@@ -80,11 +89,24 @@ def evaluate_end_to_end_manifest(
         for line in manifest_path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
-    detector_session = DetectionPredictorSession.from_checkpoint(detector_checkpoint)
-    recognizer_session = RecognitionPredictorSession.from_checkpoint(recognizer_checkpoint)
-    second_pass_policy = _load_second_pass_policy(recognizer_checkpoint)
+    detector_session = (
+        DetectionPredictorSession.from_checkpoint(detector_checkpoint)
+        if detector_checkpoint is not None
+        else None
+    )
+    recognizer_session = (
+        RecognitionPredictorSession.from_checkpoint(recognizer_checkpoint)
+        if recognizer_checkpoint is not None
+        else None
+    )
+    second_pass_policy = (
+        _load_second_pass_policy(recognizer_checkpoint)
+        if recognizer_checkpoint is not None
+        else None
+    )
     summary, image_results = _evaluate_manifest_rows(
         rows=rows,
+        end2end_checkpoint=end2end_checkpoint,
         detector_checkpoint=detector_checkpoint,
         recognizer_checkpoint=recognizer_checkpoint,
         detector_session=detector_session,
@@ -135,8 +157,9 @@ def sweep_end_to_end_manifest(
     *,
     manifest_path: Path,
     output_dir: Path,
-    detector_checkpoint: Path,
-    recognizer_checkpoint: Path,
+    detector_checkpoint: Path | None,
+    recognizer_checkpoint: Path | None,
+    end2end_checkpoint: Path | None = None,
     detector_thresholds: list[float] | None = None,
     min_areas: list[float] | None = None,
     max_images: int | None = None,
@@ -149,9 +172,21 @@ def sweep_end_to_end_manifest(
     ]
     resolved_thresholds = detector_thresholds or list(DEFAULT_SWEEP_THRESHOLDS)
     resolved_min_areas = min_areas or list(DEFAULT_SWEEP_MIN_AREAS)
-    detector_session = DetectionPredictorSession.from_checkpoint(detector_checkpoint)
-    recognizer_session = RecognitionPredictorSession.from_checkpoint(recognizer_checkpoint)
-    second_pass_policy = _load_second_pass_policy(recognizer_checkpoint)
+    detector_session = (
+        DetectionPredictorSession.from_checkpoint(detector_checkpoint)
+        if detector_checkpoint is not None
+        else None
+    )
+    recognizer_session = (
+        RecognitionPredictorSession.from_checkpoint(recognizer_checkpoint)
+        if recognizer_checkpoint is not None
+        else None
+    )
+    second_pass_policy = (
+        _load_second_pass_policy(recognizer_checkpoint)
+        if recognizer_checkpoint is not None
+        else None
+    )
     combos = [
         (threshold, min_area)
         for threshold in resolved_thresholds
@@ -162,6 +197,7 @@ def sweep_end_to_end_manifest(
     for index, (threshold, min_area) in enumerate(combos, start=1):
         summary, _ = _evaluate_manifest_rows(
             rows=rows,
+            end2end_checkpoint=end2end_checkpoint,
             detector_checkpoint=detector_checkpoint,
             recognizer_checkpoint=recognizer_checkpoint,
             detector_session=detector_session,
@@ -233,7 +269,7 @@ def match_predictions_to_ground_truth(
     gt_candidates = [
         item
         for item in ground_truth
-        if int(item.get("ignore", 0)) == 0 and len(item.get("points", [])) == 8
+        if int(item.get("ignore", 0)) == 0 and _is_valid_polygon(item.get("points", []))
     ]
     pairs: list[tuple[float, int, int]] = []
     for pred_index, prediction in enumerate(predictions):
@@ -288,8 +324,19 @@ def aggregate_end_to_end_baseline(
         matched_ned = 1.0
         matched_mean_edit_distance = 0.0
 
+    total_latency_ms = sum(
+        item.runtime_metrics.get("total_latency_ms", 0.0) for item in image_results
+    )
+    total_images = len(image_results)
+    avg_latency_ms = _safe_div(total_latency_ms, total_images)
+    avg_detector_latency_ms = _average_runtime_metric(image_results, "detector_latency_ms")
+    avg_recognizer_latency_ms = _average_runtime_metric(image_results, "recognizer_latency_ms")
+    avg_second_pass_latency_ms = _average_runtime_metric(image_results, "second_pass_latency_ms")
+    avg_post_ocr_latency_ms = _average_runtime_metric(image_results, "post_ocr_latency_ms")
+    fps = 1000.0 / avg_latency_ms if avg_latency_ms > 0 else 0.0
+
     return EndToEndBaselineSummary(
-        total_images=len(image_results),
+        total_images=total_images,
         total_gt_lines=total_gt_lines,
         matched_lines=matched_lines,
         exact_match_lines=exact_match_lines,
@@ -299,12 +346,19 @@ def aggregate_end_to_end_baseline(
         matched_cer=matched_cer,
         matched_ned=matched_ned,
         matched_mean_edit_distance=matched_mean_edit_distance,
+        total_latency_ms=total_latency_ms,
+        avg_latency_ms=avg_latency_ms,
+        avg_detector_latency_ms=avg_detector_latency_ms,
+        avg_recognizer_latency_ms=avg_recognizer_latency_ms,
+        avg_second_pass_latency_ms=avg_second_pass_latency_ms,
+        avg_post_ocr_latency_ms=avg_post_ocr_latency_ms,
+        fps=fps,
     )
 
 
 def _polygon_iou(left: list[int], right: list[int]) -> float:
-    left_pts = np.asarray(left, dtype=np.float32).reshape(4, 2)
-    right_pts = np.asarray(right, dtype=np.float32).reshape(4, 2)
+    left_pts = np.asarray(left, dtype=np.float32).reshape(-1, 2)
+    right_pts = np.asarray(right, dtype=np.float32).reshape(-1, 2)
     min_x = int(np.floor(min(left_pts[:, 0].min(), right_pts[:, 0].min())))
     min_y = int(np.floor(min(left_pts[:, 1].min(), right_pts[:, 1].min())))
     max_x = int(np.ceil(max(left_pts[:, 0].max(), right_pts[:, 0].max())))
@@ -340,6 +394,13 @@ def _build_markdown_summary(summary: EndToEndBaselineSummary) -> str:
         f"| matched_cer | {summary.matched_cer:.6f} |",
         f"| matched_ned | {summary.matched_ned:.6f} |",
         f"| matched_mean_edit_distance | {summary.matched_mean_edit_distance:.6f} |",
+        f"| total_latency_ms | {summary.total_latency_ms:.6f} |",
+        f"| avg_latency_ms | {summary.avg_latency_ms:.6f} |",
+        f"| avg_detector_latency_ms | {summary.avg_detector_latency_ms:.6f} |",
+        f"| avg_recognizer_latency_ms | {summary.avg_recognizer_latency_ms:.6f} |",
+        f"| avg_second_pass_latency_ms | {summary.avg_second_pass_latency_ms:.6f} |",
+        f"| avg_post_ocr_latency_ms | {summary.avg_post_ocr_latency_ms:.6f} |",
+        f"| fps | {summary.fps:.6f} |",
     ]
     return "\n".join(lines) + "\n"
 
@@ -347,10 +408,11 @@ def _build_markdown_summary(summary: EndToEndBaselineSummary) -> str:
 def _evaluate_manifest_rows(
     *,
     rows: list[dict[str, Any]],
-    detector_checkpoint: Path,
-    recognizer_checkpoint: Path,
-    detector_session: DetectionPredictorSession,
-    recognizer_session: RecognitionPredictorSession,
+    end2end_checkpoint: Path | None,
+    detector_checkpoint: Path | None,
+    recognizer_checkpoint: Path | None,
+    detector_session: DetectionPredictorSession | None,
+    recognizer_session: RecognitionPredictorSession | None,
     second_pass_policy: Any,
     max_images: int | None,
     detector_threshold: float,
@@ -366,8 +428,9 @@ def _evaluate_manifest_rows(
             break
         image_path = Path(str(payload.get("image_path", "")))
         instances = list(payload.get("instances", []))
-        _, line_results = infer_end_to_end_image(
+        inference = infer_end_to_end_image_detailed(
             image_path=image_path,
+            end2end_checkpoint=end2end_checkpoint,
             detector_checkpoint=detector_checkpoint,
             recognizer_checkpoint=recognizer_checkpoint,
             detector_threshold=detector_threshold,
@@ -376,6 +439,7 @@ def _evaluate_manifest_rows(
             recognizer_session=recognizer_session,
             second_pass_policy=second_pass_policy,
         )
+        line_results = list(inference["line_results"])
         match_result = match_predictions_to_ground_truth(
             line_results,
             instances,
@@ -396,6 +460,7 @@ def _evaluate_manifest_rows(
                 correct_matches=correct_matches,
                 wrong_matches=wrong_matches,
                 missed_gt_texts=match_result.missed_gt_texts,
+                runtime_metrics=dict(inference.get("runtime_metrics", {})),
             )
         )
         partial = aggregate_end_to_end_baseline(image_results)
@@ -529,7 +594,21 @@ def _build_sweep_markdown(records: list[dict[str, Any]]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _average_runtime_metric(
+    image_results: list[EndToEndBaselineImageResult],
+    metric_name: str,
+) -> float:
+    if not image_results:
+        return 0.0
+    total = sum(item.runtime_metrics.get(metric_name, 0.0) for item in image_results)
+    return total / len(image_results)
+
+
 def _safe_div(numerator: float, denominator: float) -> float:
     if denominator == 0:
         return 0.0
     return numerator / denominator
+
+
+def _is_valid_polygon(points: list[object]) -> bool:
+    return len(points) >= 8 and len(points) % 2 == 0

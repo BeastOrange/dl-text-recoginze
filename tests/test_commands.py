@@ -191,3 +191,61 @@ def test_wrapper_entrypoint_works_from_repo_root() -> None:
 
     assert result.returncode == 0
     assert "dltr" in result.stdout.lower()
+
+
+def test_export_onnx_command_writes_real_export_file(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
+    dataset_dir = tmp_path / "data" / "raw" / "rects"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    config_dir = tmp_path / "configs" / "detection"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_path = config_dir / "det.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment_name: det_export_real",
+                "model_name: dbnet",
+                "dataset_dir: data/raw/rects",
+                "epochs: 1",
+                "batch_size: 1",
+                "learning_rate: 0.001",
+                "image_height: 32",
+                "image_width: 32",
+                "device: cpu",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    checkpoint = tmp_path / "best.pt"
+    checkpoint.write_bytes(b"pt")
+    calls = {}
+
+    def fake_export_detection_model_to_onnx(**kwargs):
+        calls.update(kwargs)
+        output_path = kwargs["output_path"]
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"onnx")
+        return output_path
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "dltr.commands.export_detection_model_to_onnx",
+        fake_export_detection_model_to_onnx,
+    )
+
+    exit_code = main(
+        [
+            "export",
+            "onnx",
+            "--config",
+            str(config_path),
+            "--checkpoint",
+            str(checkpoint),
+            "--output",
+            "artifacts/exports/model.onnx",
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls["checkpoint_path"] == checkpoint
+    assert (tmp_path / "artifacts" / "exports" / "model.onnx").exists()

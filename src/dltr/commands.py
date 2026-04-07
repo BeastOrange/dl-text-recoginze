@@ -28,13 +28,14 @@ from dltr.data.reporting import write_eda_markdown_report
 from dltr.data.types import DatasetSpec
 from dltr.data.validation import validate_dataset_paths
 from dltr.models.detection import (
-    build_export_plan,
     load_detection_run_config,
     prepare_detection_run,
     train_dbnet_detector,
     write_evaluation_summary,
     write_experiment_metadata,
 )
+from dltr.models.detection.export import export_detection_model_to_onnx
+from dltr.models.end2end_system import train_end2end_multitask_system
 from dltr.models.recognition.config import (
     RecognitionExperimentConfig,
     SecondPassConfig,
@@ -492,7 +493,7 @@ def cmd_train_end2end(args: argparse.Namespace) -> int:
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     print_stage_header(
-        "开始端到端协同训练",
+        "开始统一端到端多任务训练",
         [
             ("运行编号", resolved_run_id),
             ("检测配置", detector_config_path),
@@ -501,40 +502,47 @@ def cmd_train_end2end(args: argparse.Namespace) -> int:
         ],
     )
 
-    detector_result = train_dbnet_detector(
+    joint_result = train_end2end_multitask_system(
         detector_config,
+        recognizer_config,
         paths=ensure_runtime_dirs(),
         run_id=args.run_id,
+        output_dir=output_dir,
+        max_train_batches=args.max_train_batches,
+        max_val_batches=args.max_val_batches,
     )
-    if recognizer_config.model_name == "crnn":
-        recognizer_result = train_crnn_recognizer(
-            recognizer_config,
-            paths=ensure_runtime_dirs(),
-            run_id=args.run_id,
-        )
-    elif recognizer_config.model_name == "transformer":
-        recognizer_result = train_transformer_recognizer(
-            recognizer_config,
-            paths=ensure_runtime_dirs(),
-            run_id=args.run_id,
-        )
-    else:
-        print(f"Unsupported recognition model: {recognizer_config.model_name}")
-        return 1
 
+    detector_variant = _resolve_detector_variant(detector_config)
+    recognizer_variant = _resolve_recognizer_variant(recognizer_config)
+    system_variant = _resolve_system_variant(detector_variant, recognizer_variant)
+    joint_payload = (
+        json.loads(joint_result.summary_path.read_text(encoding="utf-8"))
+        if joint_result.summary_path.exists()
+        else {}
+    )
+    best_joint_checkpoint = getattr(
+        joint_result,
+        "best_checkpoint_path",
+        joint_result.checkpoint_path,
+    )
     summary_payload = {
         "run_id": resolved_run_id,
+        "coordination_strategy": "shared_backbone_multitask_training",
+        "detector_variant": detector_variant,
+        "recognizer_variant": recognizer_variant,
+        "system_variant": system_variant,
+        "unified_checkpoint_path": str(best_joint_checkpoint),
         "detector": {
             "config_path": str(detector_config_path),
-            "run_dir": str(detector_result.context.run_dir),
-            "best_checkpoint_path": str(detector_result.best_checkpoint_path),
-            "metrics": _read_metrics_from_summary(detector_result.summary_path),
+            "run_dir": str(joint_result.detector_proxy_summary_path.parent),
+            "best_checkpoint_path": str(best_joint_checkpoint),
+            "metrics": joint_payload.get("detector_metrics", {}),
         },
         "recognizer": {
             "config_path": str(recognizer_config_path),
-            "run_dir": str(recognizer_result.run_dir),
-            "best_checkpoint_path": str(recognizer_result.best_checkpoint_path),
-            "metrics": _read_metrics_from_summary(recognizer_result.summary_path),
+            "run_dir": str(joint_result.recognizer_proxy_summary_path.parent),
+            "best_checkpoint_path": str(best_joint_checkpoint),
+            "metrics": joint_payload.get("recognizer_metrics", {}),
             "model_name": recognizer_config.model_name,
         },
         "created_at": datetime.now(UTC).isoformat(),
@@ -551,8 +559,12 @@ def cmd_train_end2end(args: argparse.Namespace) -> int:
                 "# End-to-End Training Summary",
                 "",
                 f"- Run ID: `{resolved_run_id}`",
-                f"- Detector Run: `{detector_result.context.run_dir}`",
-                f"- Recognizer Run: `{recognizer_result.run_dir}`",
+                f"- Coordination Strategy: `{summary_payload['coordination_strategy']}`",
+                f"- Detector Variant: `{detector_variant}`",
+                f"- Recognizer Variant: `{recognizer_variant}`",
+                f"- System Variant: `{system_variant}`",
+                f"- Detector Run: `{summary_payload['detector']['run_dir']}`",
+                f"- Recognizer Run: `{summary_payload['recognizer']['run_dir']}`",
                 "",
                 "## Detector",
                 "",
@@ -576,10 +588,12 @@ def cmd_train_end2end(args: argparse.Namespace) -> int:
         encoding="utf-8",
     )
     print_artifact_summary(
-        "端到端协同训练完成，已生成以下产物：",
+        "端到端系统联合编排训练完成，已生成以下产物：",
         [
-            ("检测运行目录", detector_result.context.run_dir),
-            ("识别运行目录", recognizer_result.run_dir),
+            ("统一运行目录", joint_result.run_dir),
+            ("统一最佳权重", best_joint_checkpoint),
+            ("检测代理摘要", joint_result.detector_proxy_summary_path),
+            ("识别代理摘要", joint_result.recognizer_proxy_summary_path),
             ("系统摘要 JSON", summary_json),
             ("系统摘要 Markdown", summary_markdown),
         ],
@@ -793,17 +807,24 @@ def cmd_evaluate_recognizer(args: argparse.Namespace) -> int:
 
 
 def cmd_evaluate_end2end(args: argparse.Namespace) -> int:
+    unified_checkpoint = _resolve_unified_end_to_end_checkpoint(
+        checkpoint=args.end2end_checkpoint,
+        run_dir=args.end2end_run_dir,
+    )
     if args.manifest:
-        detector_checkpoint = _resolve_end_to_end_checkpoint(
-            task_name="detection",
-            checkpoint=args.detector_checkpoint,
-            run_dir=args.detector_run_dir,
-        )
-        recognizer_checkpoint = _resolve_end_to_end_checkpoint(
-            task_name="recognition",
-            checkpoint=args.recognizer_checkpoint,
-            run_dir=args.recognizer_run_dir,
-        )
+        detector_checkpoint = None
+        recognizer_checkpoint = None
+        if unified_checkpoint is None:
+            detector_checkpoint = _resolve_end_to_end_checkpoint(
+                task_name="detection",
+                checkpoint=args.detector_checkpoint,
+                run_dir=args.detector_run_dir,
+            )
+            recognizer_checkpoint = _resolve_end_to_end_checkpoint(
+                task_name="recognition",
+                checkpoint=args.recognizer_checkpoint,
+                run_dir=args.recognizer_run_dir,
+            )
         manifest_path = _resolve_existing_path_arg(args.manifest)
         output_dir = _resolve_output_path(
             args.output_dir,
@@ -813,6 +834,7 @@ def cmd_evaluate_end2end(args: argparse.Namespace) -> int:
             outputs = sweep_end_to_end_manifest(
                 manifest_path=manifest_path,
                 output_dir=output_dir,
+                end2end_checkpoint=unified_checkpoint,
                 detector_checkpoint=detector_checkpoint,
                 recognizer_checkpoint=recognizer_checkpoint,
                 detector_thresholds=args.sweep_detector_thresholds,
@@ -823,6 +845,7 @@ def cmd_evaluate_end2end(args: argparse.Namespace) -> int:
             outputs = evaluate_end_to_end_manifest(
                 manifest_path=manifest_path,
                 output_dir=output_dir,
+                end2end_checkpoint=unified_checkpoint,
                 detector_checkpoint=detector_checkpoint,
                 recognizer_checkpoint=recognizer_checkpoint,
                 max_images=args.max_images,
@@ -834,22 +857,26 @@ def cmd_evaluate_end2end(args: argparse.Namespace) -> int:
         return 0
 
     if args.image:
-        detector_checkpoint = _resolve_end_to_end_checkpoint(
-            task_name="detection",
-            checkpoint=args.detector_checkpoint,
-            run_dir=args.detector_run_dir,
-        )
-        recognizer_checkpoint = _resolve_end_to_end_checkpoint(
-            task_name="recognition",
-            checkpoint=args.recognizer_checkpoint,
-            run_dir=args.recognizer_run_dir,
-        )
+        detector_checkpoint = None
+        recognizer_checkpoint = None
+        if unified_checkpoint is None:
+            detector_checkpoint = _resolve_end_to_end_checkpoint(
+                task_name="detection",
+                checkpoint=args.detector_checkpoint,
+                run_dir=args.detector_run_dir,
+            )
+            recognizer_checkpoint = _resolve_end_to_end_checkpoint(
+                task_name="recognition",
+                checkpoint=args.recognizer_checkpoint,
+                run_dir=args.recognizer_run_dir,
+            )
         artifacts = run_end_to_end_pipeline(
             image_path=_resolve_existing_path_arg(args.image),
             output_dir=_resolve_output_path(
                 args.output_dir,
                 ProjectPaths.from_root().reports / "eval",
             ),
+            end2end_checkpoint=unified_checkpoint,
             detector_checkpoint=detector_checkpoint,
             recognizer_checkpoint=recognizer_checkpoint,
             detector_threshold=args.detector_threshold,
@@ -901,16 +928,22 @@ def cmd_evaluate_end2end(args: argparse.Namespace) -> int:
 
 
 def cmd_export_onnx(args: argparse.Namespace) -> int:
-    config = load_detection_run_config(_resolve_existing_path_arg(args.config))
-    context = prepare_detection_run(config, run_id=args.run_id)
-    outputs = build_export_plan(
-        context,
-        checkpoint_path=_resolve_existing_path_arg(args.checkpoint),
-        targets=("onnx",),
+    _ = load_detection_run_config(_resolve_existing_path_arg(args.config))
+    checkpoint_path = _resolve_existing_path_arg(args.checkpoint)
+    output_path = _resolve_output_path(
+        args.output,
+        ProjectPaths.from_root().artifacts / "exports" / "model.onnx",
     )
-    print("Export plan created for ONNX conversion.")
-    print(f"plan_json={outputs['json']}")
-    print(f"plan_markdown={outputs['markdown']}")
+    try:
+        exported = export_detection_model_to_onnx(
+            checkpoint_path=checkpoint_path,
+            output_path=output_path,
+        )
+    except RuntimeError as exc:
+        print(str(exc))
+        return 1
+    print("ONNX export completed.")
+    print(f"output={exported}")
     return 0
 
 
@@ -1001,6 +1034,18 @@ def _resolve_end_to_end_checkpoint(
     return resolve_best_checkpoint(discovered_run_dir)
 
 
+def _resolve_unified_end_to_end_checkpoint(
+    *,
+    checkpoint: str | None,
+    run_dir: str | None,
+) -> Path | None:
+    if checkpoint:
+        return _resolve_existing_path_arg(checkpoint)
+    if run_dir:
+        return resolve_best_checkpoint(_resolve_existing_path_arg(run_dir))
+    return None
+
+
 def _resolve_existing_path_arg(value: str | Path) -> Path:
     path = Path(value)
     resolved = (
@@ -1036,6 +1081,39 @@ def _read_metrics_from_summary(summary_path: Path) -> dict[str, float]:
     if not isinstance(metrics, dict):
         return {}
     return {str(key): float(value) for key, value in metrics.items()}
+
+
+def _resolve_detector_variant(config: Any) -> str:
+    if bool(getattr(config, "hard_case_sampling", False)) and bool(
+        getattr(config, "multi_scale_augmentation", False)
+    ):
+        return "Det-B2"
+    if bool(getattr(config, "hard_case_sampling", False)):
+        return "Det-B1"
+    return "Det-B0"
+
+
+def _resolve_recognizer_variant(config: RecognitionExperimentConfig) -> str:
+    normalized_hints = " ".join(
+        [
+            config.experiment_name.lower(),
+            config.output_dir.lower(),
+            config.dataset_manifest.lower(),
+        ]
+    )
+    if config.second_pass.enabled:
+        return "Rec-B2"
+    if "hardcase" in normalized_hints or "hard_case" in normalized_hints:
+        return "Rec-B1"
+    return "Rec-B0"
+
+
+def _resolve_system_variant(detector_variant: str, recognizer_variant: str) -> str:
+    if recognizer_variant == "Rec-B2":
+        return "Sys-B2"
+    if detector_variant != "Det-B0" or recognizer_variant == "Rec-B1":
+        return "Sys-B1"
+    return "Sys-B0"
 
 
 def _prepare_recognition_run(

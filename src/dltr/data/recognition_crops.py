@@ -84,10 +84,10 @@ def extract_recognition_crops_from_detection_manifest(
                 skipped_instances += 1
                 continue
             points = [int(value) for value in instance.get("points", [])]
-            if len(points) != 8:
+            if not _is_valid_polygon(points):
                 skipped_instances += 1
                 continue
-            crop = _crop_quadrilateral(image, points)
+            crop = _crop_polygon(image, points)
             if crop is None or crop.size == 0:
                 skipped_instances += 1
                 continue
@@ -129,8 +129,8 @@ def extract_recognition_crops_from_detection_manifest(
     )
 
 
-def _crop_quadrilateral(image: np.ndarray, points: list[int]) -> np.ndarray | None:
-    pts = np.asarray(points, dtype=np.float32).reshape(4, 2)
+def _crop_polygon(image: np.ndarray, points: list[int]) -> np.ndarray | None:
+    pts = _polygon_to_quad(points)
     width_a = np.linalg.norm(pts[2] - pts[3])
     width_b = np.linalg.norm(pts[1] - pts[0])
     height_a = np.linalg.norm(pts[1] - pts[2])
@@ -149,3 +149,15 @@ def _crop_quadrilateral(image: np.ndarray, points: list[int]) -> np.ndarray | No
     transform = cv2.getPerspectiveTransform(pts, destination)
     cropped = cv2.warpPerspective(image, transform, (target_width, target_height))
     return cropped
+
+
+def _polygon_to_quad(points: list[int]) -> np.ndarray:
+    pts = np.asarray(points, dtype=np.float32).reshape(-1, 2)
+    if len(points) == 8:
+        return pts
+    rect = cv2.minAreaRect(pts)
+    return cv2.boxPoints(rect).astype(np.float32)
+
+
+def _is_valid_polygon(points: list[int]) -> bool:
+    return len(points) >= 8 and len(points) % 2 == 0

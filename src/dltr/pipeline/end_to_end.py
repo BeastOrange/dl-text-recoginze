@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any
 
 import cv2
 import numpy as np
@@ -45,18 +47,21 @@ class EndToEndPipelineArtifacts:
     markdown_path: Path
     preview_image_path: Path
     line_results: list[EndToEndLineResult]
+    runtime_metrics: dict[str, float] = field(default_factory=dict)
 
 
 def run_end_to_end_pipeline(
     *,
     image_path: Path,
     output_dir: Path,
-    detector_checkpoint: Path,
-    recognizer_checkpoint: Path,
+    detector_checkpoint: Path | None,
+    recognizer_checkpoint: Path | None,
+    end2end_checkpoint: Path | None = None,
     detector_threshold: float = 0.5,
     min_area: float = 32.0,
     detector_session: DetectionPredictorSession | None = None,
     recognizer_session: RecognitionPredictorSession | None = None,
+    end2end_session: Any | None = None,
     second_pass_policy: SecondPassConfig | None = None,
 ) -> EndToEndPipelineArtifacts:
     return _run_pipeline_internal(
@@ -64,10 +69,12 @@ def run_end_to_end_pipeline(
         output_dir=output_dir,
         detector_checkpoint=detector_checkpoint,
         recognizer_checkpoint=recognizer_checkpoint,
+        end2end_checkpoint=end2end_checkpoint,
         detector_threshold=detector_threshold,
         min_area=min_area,
         detector_session=detector_session,
         recognizer_session=recognizer_session,
+        end2end_session=end2end_session,
         second_pass_policy=second_pass_policy,
     )
 
@@ -76,25 +83,32 @@ def _run_pipeline_internal(
     *,
     image_path: Path,
     output_dir: Path,
-    detector_checkpoint: Path,
-    recognizer_checkpoint: Path,
+    detector_checkpoint: Path | None,
+    recognizer_checkpoint: Path | None,
+    end2end_checkpoint: Path | None = None,
     detector_threshold: float = 0.5,
     min_area: float = 32.0,
     detector_session: DetectionPredictorSession | None = None,
     recognizer_session: RecognitionPredictorSession | None = None,
+    end2end_session: Any | None = None,
     second_pass_policy: SecondPassConfig | None = None,
 ) -> EndToEndPipelineArtifacts:
     output_dir.mkdir(parents=True, exist_ok=True)
-    preview, line_results = infer_end_to_end_image(
+    inference = infer_end_to_end_image_detailed(
         image_path=image_path,
         detector_checkpoint=detector_checkpoint,
         recognizer_checkpoint=recognizer_checkpoint,
+        end2end_checkpoint=end2end_checkpoint,
         detector_threshold=detector_threshold,
         min_area=min_area,
         detector_session=detector_session,
         recognizer_session=recognizer_session,
+        end2end_session=end2end_session,
         second_pass_policy=second_pass_policy,
     )
+    preview = inference["preview"]
+    line_results = inference["line_results"]
+    runtime_metrics = inference["runtime_metrics"]
 
     json_path = output_dir / "end_to_end_result.json"
     markdown_path = output_dir / "end_to_end_result.md"
@@ -121,13 +135,17 @@ def _run_pipeline_internal(
                     }
                     for item in line_results
                 ],
+                "runtime_metrics": runtime_metrics,
             },
             ensure_ascii=False,
             indent=2,
         ),
         encoding="utf-8",
     )
-    markdown_path.write_text(_build_markdown_report(image_path, line_results), encoding="utf-8")
+    markdown_path.write_text(
+        _build_markdown_report(image_path, line_results, runtime_metrics),
+        encoding="utf-8",
+    )
     cv2.imwrite(str(preview_path), preview)
     return EndToEndPipelineArtifacts(
         output_dir=output_dir,
@@ -135,23 +153,66 @@ def _run_pipeline_internal(
         markdown_path=markdown_path,
         preview_image_path=preview_path,
         line_results=line_results,
+        runtime_metrics=runtime_metrics,
     )
 
 
 def infer_end_to_end_image(
     *,
     image_path: Path,
-    detector_checkpoint: Path,
-    recognizer_checkpoint: Path,
+    detector_checkpoint: Path | None,
+    recognizer_checkpoint: Path | None,
+    end2end_checkpoint: Path | None = None,
     detector_threshold: float = 0.5,
     min_area: float = 32.0,
     detector_session: DetectionPredictorSession | None = None,
     recognizer_session: RecognitionPredictorSession | None = None,
+    end2end_session: Any | None = None,
     second_pass_policy: SecondPassConfig | None = None,
 ) -> tuple[np.ndarray, list[EndToEndLineResult]]:
+    inference = infer_end_to_end_image_detailed(
+        image_path=image_path,
+        detector_checkpoint=detector_checkpoint,
+        recognizer_checkpoint=recognizer_checkpoint,
+        end2end_checkpoint=end2end_checkpoint,
+        detector_threshold=detector_threshold,
+        min_area=min_area,
+        detector_session=detector_session,
+        recognizer_session=recognizer_session,
+        end2end_session=end2end_session,
+        second_pass_policy=second_pass_policy,
+    )
+    return inference["preview"], inference["line_results"]
+
+
+def infer_end_to_end_image_detailed(
+    *,
+    image_path: Path,
+    detector_checkpoint: Path | None,
+    recognizer_checkpoint: Path | None,
+    end2end_checkpoint: Path | None = None,
+    detector_threshold: float = 0.5,
+    min_area: float = 32.0,
+    detector_session: DetectionPredictorSession | None = None,
+    recognizer_session: RecognitionPredictorSession | None = None,
+    end2end_session: Any | None = None,
+    second_pass_policy: SecondPassConfig | None = None,
+) -> dict[str, object]:
     original = cv2.imread(str(image_path))
     if original is None:
         raise FileNotFoundError(f"Could not read image: {image_path}")
+
+    if end2end_session is not None or end2end_checkpoint is not None:
+        resolved_session = end2end_session
+        if resolved_session is None:
+            from dltr.models.end2end_system import UnifiedEndToEndPredictorSession
+
+            resolved_session = UnifiedEndToEndPredictorSession.from_checkpoint(end2end_checkpoint)
+        return resolved_session.infer_image(
+            original,
+            threshold=detector_threshold,
+            min_area=min_area,
+        )
 
     resolved_detector_session = detector_session or DetectionPredictorSession.from_checkpoint(
         detector_checkpoint
@@ -161,11 +222,14 @@ def infer_end_to_end_image(
     )
     resolved_policy = second_pass_policy or _load_second_pass_policy(recognizer_checkpoint)
 
+    total_started_at = time.perf_counter()
+    detector_started_at = time.perf_counter()
     detections = resolved_detector_session.predict_image(
         original,
         threshold=detector_threshold,
         min_area=min_area,
     )
+    detector_latency_ms = (time.perf_counter() - detector_started_at) * 1000.0
     preview = original.copy()
     line_results: list[EndToEndLineResult] = []
     cropped_items: list[tuple[int, object, np.ndarray]] = []
@@ -175,9 +239,13 @@ def infer_end_to_end_image(
             continue
         cropped_items.append((index, detection, crop))
 
-    first_pass_predictions = resolved_recognizer_session.recognize_images(
-        [crop for _, _, crop in cropped_items]
+    recognizer_started_at = time.perf_counter()
+    first_pass_predictions = (
+        resolved_recognizer_session.recognize_images([crop for _, _, crop in cropped_items])
+        if cropped_items
+        else []
     )
+    recognizer_latency_ms = (time.perf_counter() - recognizer_started_at) * 1000.0
     second_pass_indexes: list[int] = []
     second_pass_crops: list[np.ndarray] = []
     prepared: list[dict[str, object]] = []
@@ -211,9 +279,16 @@ def infer_end_to_end_image(
             second_pass_indexes.append(item_index)
             second_pass_crops.append(_apply_second_pass_enhancement(crop))
 
-    second_pass_predictions = resolved_recognizer_session.recognize_images(second_pass_crops)
+    second_pass_started_at = time.perf_counter()
+    second_pass_predictions = (
+        resolved_recognizer_session.recognize_images(second_pass_crops)
+        if second_pass_crops
+        else []
+    )
+    second_pass_latency_ms = (time.perf_counter() - second_pass_started_at) * 1000.0
     second_pass_map = dict(zip(second_pass_indexes, second_pass_predictions, strict=True))
 
+    post_ocr_started_at = time.perf_counter()
     for prepared_index, item in enumerate(prepared):
         index = int(item["index"])
         detection = item["detection"]
@@ -257,11 +332,25 @@ def infer_end_to_end_image(
             f"{recognition.text[:12]} | {analysis.label}",
         )
 
-    return preview, line_results
+    post_ocr_latency_ms = (time.perf_counter() - post_ocr_started_at) * 1000.0
+    total_latency_ms = (time.perf_counter() - total_started_at) * 1000.0
+    fps = 1000.0 / total_latency_ms if total_latency_ms > 0 else 0.0
+    return {
+        "preview": preview,
+        "line_results": line_results,
+        "runtime_metrics": {
+            "total_latency_ms": total_latency_ms,
+            "detector_latency_ms": detector_latency_ms,
+            "recognizer_latency_ms": recognizer_latency_ms,
+            "second_pass_latency_ms": second_pass_latency_ms,
+            "post_ocr_latency_ms": post_ocr_latency_ms,
+            "fps": fps,
+        },
+    }
 
 
 def _crop_polygon(image: np.ndarray, polygon: list[int]) -> np.ndarray | None:
-    pts = np.asarray(polygon, dtype=np.float32).reshape(4, 2)
+    pts = _polygon_to_quad(polygon)
     width_a = np.linalg.norm(pts[2] - pts[3])
     width_b = np.linalg.norm(pts[1] - pts[0])
     height_a = np.linalg.norm(pts[1] - pts[2])
@@ -282,7 +371,7 @@ def _crop_polygon(image: np.ndarray, polygon: list[int]) -> np.ndarray | None:
 
 
 def _draw_polygon(image: np.ndarray, polygon: list[int], label: str) -> None:
-    pts = np.asarray(polygon, dtype=np.int32).reshape(4, 2)
+    pts = np.asarray(polygon, dtype=np.int32).reshape(-1, 2)
     cv2.polylines(image, [pts], isClosed=True, color=(0, 180, 0), thickness=2)
     x, y = int(pts[:, 0].min()), int(pts[:, 1].min()) - 6
     cv2.putText(
@@ -297,12 +386,18 @@ def _draw_polygon(image: np.ndarray, polygon: list[int], label: str) -> None:
     )
 
 
-def _build_markdown_report(image_path: Path, line_results: list[EndToEndLineResult]) -> str:
+def _build_markdown_report(
+    image_path: Path,
+    line_results: list[EndToEndLineResult],
+    runtime_metrics: dict[str, float],
+) -> str:
     lines = [
         "# End-to-End OCR Result",
         "",
         f"- Image: `{image_path}`",
         f"- Lines: `{len(line_results)}`",
+        f"- Total Latency (ms): `{runtime_metrics.get('total_latency_ms', 0.0):.4f}`",
+        f"- FPS: `{runtime_metrics.get('fps', 0.0):.4f}`",
         "",
         "| Line | Text | Rec Confidence | Analysis Label | Analysis Confidence | Second Pass |",
         "|---|---|---:|---|---:|---|",
@@ -353,3 +448,11 @@ def _load_second_pass_policy(recognizer_checkpoint: Path) -> SecondPassConfig:
     )
     policy.validate()
     return policy
+
+
+def _polygon_to_quad(polygon: list[int]) -> np.ndarray:
+    pts = np.asarray(polygon, dtype=np.float32).reshape(-1, 2)
+    if len(polygon) == 8:
+        return pts
+    rect = cv2.minAreaRect(pts)
+    return cv2.boxPoints(rect).astype(np.float32)

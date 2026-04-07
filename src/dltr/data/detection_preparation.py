@@ -164,7 +164,7 @@ def _extract_json_instances(label_path: Path) -> list[dict[str, object]]:
         if not isinstance(item, dict):
             continue
         points = list(item.get("points", []))
-        if len(points) != 8:
+        if not _is_valid_polygon(points):
             continue
         instances.append(
             {
@@ -180,13 +180,33 @@ def _extract_txt_instances(label_path: Path) -> list[dict[str, object]]:
     instances: list[dict[str, object]] = []
     for line in label_path.read_text(encoding="utf-8", errors="ignore").splitlines():
         parts = [segment.strip() for segment in line.split(",")]
-        if len(parts) < 10:
+        if len(parts) < 9:
             continue
-        try:
-            points = [int(value) for value in parts[:8]]
-        except ValueError:
+        coord_tokens: list[int] = []
+        text_start_index = len(parts)
+        ignore = 0
+        for index, token in enumerate(parts):
+            try:
+                coord_tokens.append(int(float(token)))
+            except ValueError:
+                if index >= 8 and token in {"0", "1"}:
+                    ignore = int(token)
+                    text_start_index = index + 1
+                else:
+                    text_start_index = index
+                break
+        if text_start_index == len(parts):
+            text_start_index = len(coord_tokens)
+        if len(coord_tokens) >= 9 and len(coord_tokens) % 2 == 1 and coord_tokens[-1] in {0, 1}:
+            ignore = coord_tokens[-1]
+            coord_tokens = coord_tokens[:-1]
+        points = coord_tokens
+        if not _is_valid_polygon(points):
             continue
-        ignore = int(parts[8]) if parts[8] in {"0", "1"} else 0
-        text = ",".join(parts[9:] if parts[8] in {"0", "1"} else parts[8:]).strip()
+        text = ",".join(parts[text_start_index:]).strip()
         instances.append({"points": points, "text": text, "ignore": ignore})
     return instances
+
+
+def _is_valid_polygon(points: list[object]) -> bool:
+    return len(points) >= 8 and len(points) % 2 == 0

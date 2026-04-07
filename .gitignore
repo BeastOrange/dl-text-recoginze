@@ -37,5 +37,6 @@ reports/eval/generated/
 *.pt
 *.pth
 *.onnx
+*.onnx.data
 *.ckpt
 *.log

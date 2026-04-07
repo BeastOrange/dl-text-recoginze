@@ -12,7 +12,8 @@
     "contrast_score": null,
     "aspect_ratio": null
   },
-  "semantic_class": "other",
+  "analysis_label": "service_info",
+  "analysis_confidence": 0.86,
   "slots": {
     "phone": [],
     "price": [],
@@ -29,5 +30,5 @@
       "21"
     ]
   },
-  "generated_at": "2026-04-04T13:08:15.607449+00:00"
+  "generated_at": "2026-04-07T01:44:04.522917+00:00"
 }

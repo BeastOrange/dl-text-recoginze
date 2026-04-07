@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from dltr.demo.runtime import resolve_demo_checkpoints, run_uploaded_inference
+from dltr.visualization.report_index import is_mainline_report_path
 
 
 def discover_report_files(reports_dir: Path) -> dict[str, list[Path]]:
@@ -12,8 +13,16 @@ def discover_report_files(reports_dir: Path) -> dict[str, list[Path]]:
     eval_dir = reports_dir / "eval"
     eda_dir = reports_dir / "eda"
     return {
-        "train_markdown": sorted(train_dir.glob("*.md")) if train_dir.exists() else [],
-        "train_png": sorted(train_dir.glob("*.png")) if train_dir.exists() else [],
+        "train_markdown": (
+            sorted(path for path in train_dir.glob("*.md") if is_mainline_report_path(path))
+            if train_dir.exists()
+            else []
+        ),
+        "train_png": (
+            sorted(path for path in train_dir.glob("*.png") if is_mainline_report_path(path))
+            if train_dir.exists()
+            else []
+        ),
         "extension_markdown": sorted(extension_dir.glob("*.md")) if extension_dir.exists() else [],
         "extension_png": sorted(extension_dir.glob("*.png")) if extension_dir.exists() else [],
         "eval_json": sorted(eval_dir.glob("*.json")) if eval_dir.exists() else [],

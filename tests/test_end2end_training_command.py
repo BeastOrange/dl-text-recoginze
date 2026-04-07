@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from pathlib import Path
 
 from dltr.cli import main
@@ -61,63 +62,71 @@ def test_train_end2end_command_writes_summary(tmp_path: Path, monkeypatch) -> No
         encoding="utf-8",
     )
 
-    class _DetResult:
-        def __init__(self) -> None:
-            self.context = type(
-                "Context",
-                (),
-                {
-                    "run_dir": tmp_path / "artifacts" / "detection" / "det_end2end_smoke" / "run-1",
-                },
-            )()
-            self.checkpoint_path = self.context.run_dir / "checkpoints" / "last.pt"
-            self.best_checkpoint_path = self.context.run_dir / "checkpoints" / "best.pt"
-            self.summary_path = self.context.run_dir / "training_summary.json"
-            self.context.run_dir.mkdir(parents=True, exist_ok=True)
-            self.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-            self.checkpoint_path.write_bytes(b"pt")
-            self.best_checkpoint_path.write_bytes(b"pt")
-            self.summary_path.write_text(
-                json.dumps(
-                    {
-                        "metrics": {"hmean": 0.61},
-                        "best_checkpoint_path": str(self.best_checkpoint_path),
-                    }
-                ),
-                encoding="utf-8",
-            )
+    @dataclass(frozen=True)
+    class _JointResult:
+        run_dir: Path
+        checkpoint_path: Path
+        summary_path: Path
+        detector_proxy_summary_path: Path
+        recognizer_proxy_summary_path: Path
 
-    class _RecResult:
-        def __init__(self) -> None:
-            self.run_dir = (
-                tmp_path
-                / "artifacts"
-                / "checkpoints"
-                / "recognition"
-                / "rec_end2end_smoke"
-                / "run-1"
-            )
-            self.checkpoint_path = self.run_dir / "last.pt"
-            self.best_checkpoint_path = self.run_dir / "best.pt"
-            self.summary_path = self.run_dir / "training_summary.json"
-            self.run_dir.mkdir(parents=True, exist_ok=True)
-            self.checkpoint_path.write_bytes(b"pt")
-            self.best_checkpoint_path.write_bytes(b"pt")
-            self.summary_path.write_text(
-                json.dumps(
-                    {
-                        "metrics": {"word_accuracy": 0.78, "cer": 0.22, "ned": 0.18},
-                        "best_checkpoint_path": str(self.best_checkpoint_path),
-                    }
-                ),
-                encoding="utf-8",
-            )
+    def fake_train_end2end_system(*args, **kwargs):  # noqa: ANN002, ANN003
+        run_dir = tmp_path / "artifacts" / "end2end" / "pipeline-smoke"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        checkpoint_path = run_dir / "best.pt"
+        checkpoint_path.write_bytes(b"pt")
+        summary_path = run_dir / "training_summary.json"
+        detector_proxy = (
+            tmp_path
+            / "artifacts"
+            / "detection"
+            / "det_end2end_smoke_multitask"
+            / "pipeline-smoke"
+            / "training_summary.json"
+        )
+        recognizer_proxy = (
+            tmp_path
+            / "artifacts"
+            / "checkpoints"
+            / "recognition"
+            / "rec_end2end_smoke_multitask"
+            / "pipeline-smoke"
+            / "training_summary.json"
+        )
+        detector_proxy.parent.mkdir(parents=True, exist_ok=True)
+        recognizer_proxy.parent.mkdir(parents=True, exist_ok=True)
+        detector_proxy.write_text(
+            json.dumps(
+                {
+                    "run_id": "pipeline-smoke",
+                    "metrics": {"hmean": 0.61, "precision": 0.63, "recall": 0.6},
+                    "best_checkpoint_path": str(checkpoint_path),
+                }
+            ),
+            encoding="utf-8",
+        )
+        recognizer_proxy.write_text(
+            json.dumps(
+                {
+                    "run_id": "pipeline-smoke",
+                    "metrics": {"word_accuracy": 0.78, "cer": 0.22, "ned": 0.18},
+                    "best_checkpoint_path": str(checkpoint_path),
+                }
+            ),
+            encoding="utf-8",
+        )
+        return _JointResult(
+            run_dir=run_dir,
+            checkpoint_path=checkpoint_path,
+            summary_path=summary_path,
+            detector_proxy_summary_path=detector_proxy,
+            recognizer_proxy_summary_path=recognizer_proxy,
+        )
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("dltr.commands.train_dbnet_detector", lambda *args, **kwargs: _DetResult())
     monkeypatch.setattr(
-        "dltr.commands.train_transformer_recognizer",
-        lambda *args, **kwargs: _RecResult(),
+        "dltr.commands.train_end2end_multitask_system",
+        fake_train_end2end_system,
     )
 
     exit_code = main(
@@ -138,3 +147,11 @@ def test_train_end2end_command_writes_summary(tmp_path: Path, monkeypatch) -> No
     )
     assert exit_code == 0
     assert summary_path.exists()
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert payload["coordination_strategy"] == "shared_backbone_multitask_training"
+    assert payload["unified_checkpoint_path"] == str(
+        tmp_path / "artifacts" / "end2end" / "pipeline-smoke" / "best.pt"
+    )
+    assert payload["detector_variant"] == "Det-B0"
+    assert payload["recognizer_variant"] == "Rec-B2"
+    assert payload["system_variant"] == "Sys-B2"

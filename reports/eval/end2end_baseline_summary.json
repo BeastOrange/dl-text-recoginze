@@ -1,0 +1,536 @@
+{
+  "summary": {
+    "total_images": 20,
+    "total_gt_lines": 113,
+    "matched_lines": 0,
+    "exact_match_lines": 0,
+    "detection_coverage": 0.0,
+    "matched_line_accuracy": 0.0,
+    "system_line_accuracy": 0.0,
+    "matched_cer": 1.0,
+    "matched_ned": 1.0,
+    "matched_mean_edit_distance": 0.0,
+    "total_latency_ms": 1145.574247231707,
+    "avg_latency_ms": 57.27871236158535,
+    "avg_detector_latency_ms": 11.035839549731463,
+    "avg_recognizer_latency_ms": 42.92067501228303,
+    "avg_second_pass_latency_ms": 2.003181353211403,
+    "avg_post_ocr_latency_ms": 0.08844161056913435,
+    "fps": 17.458493020710115
+  },
+  "images": [
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_003670.jpg",
+      "total_gt": 6,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "一餐饮",
+        "中一餐饮",
+        "螺蛳粉",
+        "螺中王",
+        "饼",
+        "二食堂"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 165.3802910586819,
+        "detector_latency_ms": 165.33379105385393,
+        "recognizer_latency_ms": 0.0012920936569571495,
+        "second_pass_latency_ms": 0.000250060111284256,
+        "post_ocr_latency_ms": 0.00016600824892520905,
+        "fps": 6.046669730706726
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_009258.jpg",
+      "total_gt": 1,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "厦门特香食品"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 400.08937497623265,
+        "detector_latency_ms": 5.650666891597211,
+        "recognizer_latency_ms": 384.0776670258492,
+        "second_pass_latency_ms": 4.305834067054093,
+        "post_ocr_latency_ms": 0.8841250091791153,
+        "fps": 2.4994415311813896
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011859.jpg",
+      "total_gt": 10,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "天天",
+        "Tiantian",
+        "农家土菜",
+        "天天煲仔",
+        "紫街店",
+        "外卖电话：",
+        "64480138",
+        "天天煲仔",
+        "玲",
+        "鱼"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 3.363124909810722,
+        "detector_latency_ms": 3.3287089318037033,
+        "recognizer_latency_ms": 0.000625033862888813,
+        "second_pass_latency_ms": 8.300412446260452e-05,
+        "post_ocr_latency_ms": 0.000250060111284256,
+        "fps": 297.3425093676584
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_009448.jpg",
+      "total_gt": 2,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "便当",
+        "优食光"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 4.520375048741698,
+        "detector_latency_ms": 4.295791033655405,
+        "recognizer_latency_ms": 0.0007080379873514175,
+        "second_pass_latency_ms": 0.0002080341801047325,
+        "post_ocr_latency_ms": 8.300412446260452e-05,
+        "fps": 221.22058219004688
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012184.jpg",
+      "total_gt": 4,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "馋火炉魚",
+        "光臨",
+        "elcome",
+        "鑪"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 47.30849992483854,
+        "detector_latency_ms": 2.6938749942928553,
+        "recognizer_latency_ms": 39.42533303052187,
+        "second_pass_latency_ms": 4.873917088843882,
+        "post_ocr_latency_ms": 0.0719169620424509,
+        "fps": 21.137850525566265
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012576.jpg",
+      "total_gt": 11,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "朝天",
+        "門",
+        "CTM",
+        "中国·重庆·老字号",
+        "全国连锁",
+        "400-313-323",
+        "CTM",
+        "朝天門",
+        "火锅·沈阳·奥体店",
+        "订餐电话",
+        "024-31031560"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 10.262707946822047,
+        "detector_latency_ms": 4.2174579575657845,
+        "recognizer_latency_ms": 2.9242089949548244,
+        "second_pass_latency_ms": 2.897750004194677,
+        "post_ocr_latency_ms": 0.05224999040365219,
+        "fps": 97.44016931804634
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_008599.jpg",
+      "total_gt": 6,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "烤肉拌饭",
+        "黄",
+        "张秀梅",
+        "脆皮鸡饭",
+        "全国加盟热线：",
+        "400-9966-567"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 20.22591605782509,
+        "detector_latency_ms": 3.106042044237256,
+        "recognizer_latency_ms": 3.250915906392038,
+        "second_pass_latency_ms": 3.6562919849529862,
+        "post_ocr_latency_ms": 0.1035409513860941,
+        "fps": 49.44151835402855
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011108.jpg",
+      "total_gt": 1,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "谢记烧烤"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 205.28916700277478,
+        "detector_latency_ms": 2.5516250170767307,
+        "recognizer_latency_ms": 197.74779200088233,
+        "second_pass_latency_ms": 4.346666042692959,
+        "post_ocr_latency_ms": 0.12312503531575203,
+        "fps": 4.871177639814202
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_014227.jpg",
+      "total_gt": 5,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "猫赞",
+        "MORE",
+        "THAN",
+        "藤椒",
+        "钵钵鱼"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 2.6418750640004873,
+        "detector_latency_ms": 2.6157499523833394,
+        "recognizer_latency_ms": 0.000625033862888813,
+        "second_pass_latency_ms": 8.393544703722e-05,
+        "post_ocr_latency_ms": 0.000125030055642128,
+        "fps": 378.519035069637
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011544.jpg",
+      "total_gt": 6,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "九田家",
+        "黑牛烤肉料理店",
+        "JIU",
+        "TIAN",
+        "HOWE",
+        "BBO"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 8.90245905611664,
+        "detector_latency_ms": 2.2817919962108135,
+        "recognizer_latency_ms": 2.628374961204827,
+        "second_pass_latency_ms": 3.5379589535295963,
+        "post_ocr_latency_ms": 0.06687489803880453,
+        "fps": 112.32851436850213
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000203.jpg",
+      "total_gt": 4,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "欢迎光临",
+        "福",
+        "九大簋家宴",
+        "乙末年金秋"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 6.631333031691611,
+        "detector_latency_ms": 2.2898329189047217,
+        "recognizer_latency_ms": 2.297000028192997,
+        "second_pass_latency_ms": 1.818374963477254,
+        "post_ocr_latency_ms": 0.04912505391985178,
+        "fps": 150.79924280999447
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_005149.jpg",
+      "total_gt": 4,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "乐吃",
+        "串串锅",
+        "那一年我们经过乐山",
+        "中大店"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 6.00779103115201,
+        "detector_latency_ms": 2.0228750072419643,
+        "recognizer_latency_ms": 1.9622920081019402,
+        "second_pass_latency_ms": 1.7877919599413872,
+        "post_ocr_latency_ms": 0.056292046792805195,
+        "fps": 166.45052978952356
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_010732.jpg",
+      "total_gt": 6,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "张记",
+        "绝味笋子面",
+        "特色小炒、",
+        "盖饭、",
+        "炒饭",
+        "绝味笋"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 6.326999980956316,
+        "detector_latency_ms": 2.243833034299314,
+        "recognizer_latency_ms": 2.04754201695323,
+        "second_pass_latency_ms": 1.7268749652430415,
+        "post_ocr_latency_ms": 0.036958022974431515,
+        "fps": 158.05279010746125
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_019639.jpg",
+      "total_gt": 7,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "文叔的小館",
+        "wen",
+        "shu",
+        "de",
+        "xiao",
+        "guan",
+        "文叔的小館"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 3.3686660462990403,
+        "detector_latency_ms": 3.203792031854391,
+        "recognizer_latency_ms": 0.0004998873919248581,
+        "second_pass_latency_ms": 0.00016693957149982452,
+        "post_ocr_latency_ms": 0.00016600824892520905,
+        "fps": 296.8534091108979
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_001038.jpg",
+      "total_gt": 10,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "面之缘",
+        "面馆",
+        "特色面",
+        "一次不吃是你的错",
+        "只吃一次是我的错",
+        "面之",
+        "Face",
+        "of",
+        "the",
+        "feange"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 7.227332913316786,
+        "detector_latency_ms": 2.2125830873847008,
+        "recognizer_latency_ms": 2.46395799331367,
+        "second_pass_latency_ms": 2.1779999369755387,
+        "post_ocr_latency_ms": 0.07545796688646078,
+        "fps": 138.3636276332921
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000754.jpg",
+      "total_gt": 10,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "麻",
+        "麻辣英",
+        "老成都味道",
+        "特色小郡肝",
+        "麻辣牛肉",
+        "香菜牛肉",
+        "TEL：",
+        "86666066",
+        "麻辣涮串",
+        "蜀品汇"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 223.14850008115172,
+        "detector_latency_ms": 2.299249987117946,
+        "recognizer_latency_ms": 214.86991608981043,
+        "second_pass_latency_ms": 4.715583985671401,
+        "post_ocr_latency_ms": 0.11633406393229961,
+        "fps": 4.481320733217266
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_007221.jpg",
+      "total_gt": 5,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "137898845",
+        "锡纸",
+        "花甲粉",
+        "鲜之道",
+        "电话"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 7.891083019785583,
+        "detector_latency_ms": 2.796042012050748,
+        "recognizer_latency_ms": 2.6025420520454645,
+        "second_pass_latency_ms": 2.2522080689668655,
+        "post_ocr_latency_ms": 0.04879198968410492,
+        "fps": 126.72531736045175
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_006739.jpg",
+      "total_gt": 7,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "SMALL",
+        "TOWN",
+        "COFFEE",
+        "小镇咖啡",
+        "TEL:",
+        "0595-85867273",
+        "thing"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 2.0662080496549606,
+        "detector_latency_ms": 2.041917061433196,
+        "recognizer_latency_ms": 0.0004169996827840805,
+        "second_pass_latency_ms": 0.00016705598682165146,
+        "post_ocr_latency_ms": 0.000125030055642128,
+        "fps": 483.9783680868882
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_014543.jpg",
+      "total_gt": 1,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "粮仓码头"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 12.660042033530772,
+        "detector_latency_ms": 3.3102500019595027,
+        "recognizer_latency_ms": 2.111208043061197,
+        "second_pass_latency_ms": 1.9653330091387033,
+        "post_ocr_latency_ms": 0.08300004992634058,
+        "fps": 78.98867929122578
+      }
+    },
+    {
+      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_001851.jpg",
+      "total_gt": 7,
+      "matched_lines": 0,
+      "exact_match_lines": 0,
+      "prediction_texts": [],
+      "target_texts": [],
+      "correct_matches": [],
+      "wrong_matches": [],
+      "missed_gt_texts": [
+        "煮沸生活",
+        "一锅红艳",
+        "聚知己",
+        "5022234",
+        "订餐电话：",
+        "铁塔店",
+        "虾客一品"
+      ],
+      "runtime_metrics": {
+        "total_latency_ms": 2.2624999983236194,
+        "detector_latency_ms": 2.220915979705751,
+        "recognizer_latency_ms": 0.0005830079317092896,
+        "second_pass_latency_ms": 8.300412446260452e-05,
+        "post_ocr_latency_ms": 0.000125030055642128,
+        "fps": 441.98895060373115
+      }
+    }
+  ]
+}

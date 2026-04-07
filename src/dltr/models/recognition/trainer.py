@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from contextlib import nullcontext
 from dataclasses import asdict, dataclass
@@ -361,6 +362,9 @@ def _build_runtime_optimizations(device: str, num_workers: int) -> RuntimeOptimi
 
 
 def _configure_cuda_backend(torch: Any, *, device: str) -> None:
+    if device == "mps":
+        os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+        return
     if device != "cuda":
         return
     if hasattr(torch.backends, "cudnn"):

@@ -1,0 +1,47 @@
+{
+  "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/shopsign/images/image_15.jpg",
+  "lines": [
+    {
+      "line_id": "line-0",
+      "polygon": [
+        81,
+        1348,
+        0,
+        1348,
+        0,
+        1116,
+        81,
+        1116
+      ],
+      "text": "",
+      "recognition_confidence": 0.9395467638969421,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "short_text",
+        "high_blur"
+      ],
+      "first_pass_text": "",
+      "first_pass_confidence": 0.9389762878417969,
+      "second_pass_text": "",
+      "second_pass_confidence": 0.9395467638969421,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": []
+      }
+    }
+  ],
+  "runtime_metrics": {
+    "total_latency_ms": 1170.116083114408,
+    "detector_latency_ms": 199.51208296697587,
+    "recognizer_latency_ms": 956.1802499229088,
+    "second_pass_latency_ms": 6.727708037942648,
+    "post_ocr_latency_ms": 0.8057079976424575,
+    "fps": 0.8546160628254736
+  }
+}

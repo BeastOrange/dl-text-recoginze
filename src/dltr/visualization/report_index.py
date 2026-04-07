@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+LEGACY_MAINLINE_REPORT_PREFIXES = ("semantic_",)
+
+
+def is_mainline_report_path(path: Path) -> bool:
+    return not path.name.lower().startswith(LEGACY_MAINLINE_REPORT_PREFIXES)
+
 
 def build_training_report_index(
     *,
@@ -11,7 +17,9 @@ def build_training_report_index(
     output_dir.mkdir(parents=True, exist_ok=True)
     markdown_path = output_dir / "index.md"
     markdown_files = sorted(
-        path for path in train_reports_dir.glob("*.md") if path.name != markdown_path.name
+        path
+        for path in train_reports_dir.glob("*.md")
+        if path.name != markdown_path.name and is_mainline_report_path(path)
     )
     markdown_path.write_text(
         "\n".join(

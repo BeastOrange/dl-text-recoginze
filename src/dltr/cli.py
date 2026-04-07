@@ -110,6 +110,8 @@ def build_parser() -> argparse.ArgumentParser:
     train_end2end.add_argument("--recognizer-config", required=True)
     train_end2end.add_argument("--run-id")
     train_end2end.add_argument("--output-dir")
+    train_end2end.add_argument("--max-train-batches", type=int)
+    train_end2end.add_argument("--max-val-batches", type=int)
     train_end2end.set_defaults(handler=cmd_train_end2end)
 
     evaluate = top.add_parser("evaluate", help="Evaluation commands.")
@@ -154,6 +156,8 @@ def build_parser() -> argparse.ArgumentParser:
     eval_end2end.add_argument("--detector-run-dir")
     eval_end2end.add_argument("--recognizer-checkpoint")
     eval_end2end.add_argument("--recognizer-run-dir")
+    eval_end2end.add_argument("--end2end-checkpoint")
+    eval_end2end.add_argument("--end2end-run-dir")
     eval_end2end.add_argument("--output-dir")
     eval_end2end.add_argument("--detector-threshold", default=0.5, type=float)
     eval_end2end.add_argument("--min-area", default=32.0, type=float)
@@ -165,6 +169,7 @@ def build_parser() -> argparse.ArgumentParser:
     export_onnx = export_sub.add_parser("onnx")
     export_onnx.add_argument("--config", default="configs/detection/dbnet_baseline.yaml")
     export_onnx.add_argument("--checkpoint", required=True)
+    export_onnx.add_argument("--output")
     export_onnx.add_argument("--run-id")
     export_onnx.set_defaults(handler=cmd_export_onnx)
 

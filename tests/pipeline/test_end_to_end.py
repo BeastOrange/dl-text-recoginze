@@ -122,6 +122,8 @@ def test_run_end_to_end_pipeline_applies_real_second_pass(monkeypatch, tmp_path:
     assert len(calls) == 2
     assert payload["lines"][0]["text"] == "营业时间"
     assert payload["lines"][0]["second_pass_applied"] is True
+    assert payload["runtime_metrics"]["total_latency_ms"] >= 0.0
+    assert payload["runtime_metrics"]["fps"] >= 0.0
 
 
 def test_run_end_to_end_pipeline_accepts_reused_sessions(monkeypatch, tmp_path: Path) -> None:
@@ -153,3 +155,45 @@ def test_run_end_to_end_pipeline_accepts_reused_sessions(monkeypatch, tmp_path: 
     )
 
     assert artifacts.line_results[0].text == "营业时间"
+
+
+def test_run_end_to_end_pipeline_supports_unified_session(tmp_path: Path) -> None:
+    image_path = tmp_path / "scene.png"
+    image = np.full((60, 160, 3), 255, dtype=np.uint8)
+    cv2.imwrite(str(image_path), image)
+
+    class _UnifiedSession:
+        def infer_image(self, image, *, threshold, min_area):  # noqa: ANN001
+            return {
+                "preview": image.copy(),
+                "line_results": [
+                    EndToEndLineResult(
+                        line_id="line-0",
+                        polygon=[10, 10, 150, 10, 150, 40, 10, 40],
+                        text="营业时间",
+                        recognition_confidence=0.93,
+                        analysis_label="service_info",
+                        analysis_confidence=0.88,
+                        slots=extract_post_ocr_slots("营业时间"),
+                    )
+                ],
+                "runtime_metrics": {
+                    "total_latency_ms": 10.0,
+                    "detector_latency_ms": 3.0,
+                    "recognizer_latency_ms": 4.0,
+                    "second_pass_latency_ms": 1.0,
+                    "post_ocr_latency_ms": 2.0,
+                    "fps": 100.0,
+                },
+            }
+
+    artifacts = run_end_to_end_pipeline(
+        image_path=image_path,
+        output_dir=tmp_path / "output",
+        detector_checkpoint=None,
+        recognizer_checkpoint=None,
+        end2end_session=_UnifiedSession(),
+    )
+
+    assert artifacts.line_results[0].text == "营业时间"
+    assert artifacts.runtime_metrics["fps"] == 100.0

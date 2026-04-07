@@ -41,7 +41,7 @@ def load_detection_samples(manifest_path: str | Path) -> list[DetectionSample]:
                 ignore=int(item.get("ignore", 0)),
             )
             for item in raw_instances
-            if isinstance(item, dict) and len(item.get("points", [])) == 8
+            if isinstance(item, dict) and _is_valid_polygon(item.get("points", []))
         ]
         if not instances:
             continue
@@ -64,10 +64,14 @@ def rasterize_text_mask(
 ) -> np.ndarray:
     mask = np.zeros((image_height, image_width), dtype=np.float32)
     for polygon in polygons:
-        if len(polygon) != 8:
+        if not _is_valid_polygon(polygon):
             continue
         points = np.asarray(polygon, dtype=np.float32).reshape(-1, 2)
         points[:, 0] = np.clip(points[:, 0], 0, image_width - 1)
         points[:, 1] = np.clip(points[:, 1], 0, image_height - 1)
         cv2.fillPoly(mask, [points.astype(np.int32)], color=1.0)
     return mask
+
+
+def _is_valid_polygon(points: list[object]) -> bool:
+    return len(points) >= 8 and len(points) % 2 == 0

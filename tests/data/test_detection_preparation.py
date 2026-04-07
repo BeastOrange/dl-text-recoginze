@@ -74,6 +74,42 @@ def test_build_detection_manifest_supports_shopsign_txt_layout(tmp_path: Path) -
     assert row["instances"][1]["text"] == "特价"
 
 
+def test_build_detection_manifest_keeps_curved_polygon_points(tmp_path: Path) -> None:
+    dataset_root = tmp_path / "rects"
+    image_path = dataset_root / "train" / "img" / "train_curve_000001.jpg"
+    label_path = dataset_root / "train" / "gt" / "train_curve_000001.json"
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    label_path.parent.mkdir(parents=True, exist_ok=True)
+    image_path.write_bytes(b"img")
+    label_path.write_text(
+        json.dumps(
+            {
+                "lines": [
+                    {
+                        "points": [0, 0, 8, 0, 12, 4, 12, 10, 6, 12, 0, 10],
+                        "transcription": "弯曲文本",
+                        "ignore": 0,
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    output_path = tmp_path / "curve_detection.jsonl"
+    build_detection_manifest(
+        dataset_name="rects",
+        dataset_root=dataset_root,
+        output_path=output_path,
+        image_extensions={".jpg"},
+        label_extensions={".json"},
+    )
+
+    row = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert row["instances"][0]["points"] == [0, 0, 8, 0, 12, 4, 12, 10, 6, 12, 0, 10]
+
+
 def test_split_detection_manifest_is_exhaustive(tmp_path: Path) -> None:
     manifest_path = tmp_path / "detection.jsonl"
     manifest_path.write_text(

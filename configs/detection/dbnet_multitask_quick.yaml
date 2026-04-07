@@ -1,0 +1,25 @@
+experiment_name: det_dbnet_multitask_quick
+model_name: dbnet
+dataset_dir: data/raw/rects
+train_manifest: data/processed/detection_splits/train.jsonl
+validation_manifest: data/processed/detection_splits/val.jsonl
+output_root: artifacts/detection/det_dbnet_multitask_quick
+train_split: train
+val_split: val
+image_extensions:
+  - .jpg
+  - .jpeg
+  - .png
+epochs: 2
+batch_size: 4
+learning_rate: 0.001
+image_height: 256
+image_width: 256
+device: auto
+num_workers: 0
+seed: 42
+hard_case_sampling: true
+multi_scale_augmentation: true
+description: >
+  Quick multitask-aligned detector config for local thesis verification on scene text datasets.
+
