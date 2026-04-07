@@ -7,7 +7,14 @@ from typing import Any
 import cv2
 import numpy as np
 
-from dltr.models.detection.trainer import _build_dbnet_tiny, _import_torch, _select_device
+from dltr.models.detection.trainer import (
+    DEFAULT_DETECTION_MODEL_ARCHITECTURE,
+    LEGACY_DETECTION_MODEL_ARCHITECTURE,
+    _build_detection_model,
+    _import_torch,
+    _prepare_detection_image,
+    _select_device,
+)
 from dltr.torch_checkpoint import load_torch_checkpoint
 
 
@@ -34,8 +41,19 @@ class DetectionPredictorSession:
         image_height = int(config.get("image_height", 256))
         image_width = int(config.get("image_width", 256))
         device = _select_device(torch, str(config.get("device", "auto")))
+        raw_architecture = checkpoint.get("model_architecture")
+        model_architecture = (
+            str(raw_architecture).strip()
+            if raw_architecture is not None
+            else LEGACY_DETECTION_MODEL_ARCHITECTURE
+        ) or LEGACY_DETECTION_MODEL_ARCHITECTURE
+        if model_architecture not in {
+            DEFAULT_DETECTION_MODEL_ARCHITECTURE,
+            LEGACY_DETECTION_MODEL_ARCHITECTURE,
+        }:
+            model_architecture = LEGACY_DETECTION_MODEL_ARCHITECTURE
 
-        model = _build_dbnet_tiny(torch.nn)
+        model = _build_detection_model(torch.nn, architecture=model_architecture)
         model.load_state_dict(checkpoint["model_state_dict"])
         model.to(device)
         model.eval()
@@ -72,10 +90,16 @@ class DetectionPredictorSession:
         min_area: float = 32.0,
     ) -> list[DetectionPrediction]:
         original_height, original_width = image.shape[:2]
-        resized = cv2.resize(image, (self.image_width, self.image_height))
+        if image.ndim == 3 and image.shape[2] == 3:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        resized = _prepare_detection_image(
+            image,
+            target_height=self.image_height,
+            target_width=self.image_width,
+        )
         tensor = (
             self.torch.tensor(
-                np.transpose(resized.astype(np.float32) / 255.0, (2, 0, 1)),
+                np.transpose(resized, (2, 0, 1)),
                 dtype=self.torch.float32,
             )
             .unsqueeze(0)

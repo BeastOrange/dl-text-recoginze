@@ -116,7 +116,45 @@ def test_aggregate_training_runs_writes_summary_outputs(tmp_path: Path) -> None:
         task_name="recognition",
         primary_metric="word_accuracy",
     )
-
     assert outputs["json"].exists()
     assert outputs["markdown"].exists()
     assert outputs["png"].exists()
+    payload = json.loads(outputs["json"].read_text(encoding="utf-8"))
+    assert [item["run_name"] for item in payload] == ["run_b", "run_a"]
+
+
+def test_aggregate_training_runs_excludes_obsolete_smoke_runs(tmp_path: Path) -> None:
+    smoke_run = tmp_path / "crnn_report_smoke" / "report-smoke"
+    real_run = tmp_path / "transformer_baseline_4090" / "20260406-120000"
+    smoke_run.mkdir(parents=True)
+    real_run.mkdir(parents=True)
+    (smoke_run / "training_summary.json").write_text(
+        json.dumps(
+            {
+                "run_id": "report-smoke",
+                "metrics": {"word_accuracy": 0.99},
+                "best_checkpoint_path": "/tmp/smoke.pt",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (real_run / "training_summary.json").write_text(
+        json.dumps(
+            {
+                "run_id": "20260406-120000",
+                "metrics": {"word_accuracy": 0.78},
+                "best_checkpoint_path": "/tmp/real.pt",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    outputs = aggregate_training_runs(
+        run_dirs=[smoke_run, real_run],
+        output_dir=tmp_path / "summary",
+        task_name="recognition",
+        primary_metric="word_accuracy",
+    )
+
+    payload = json.loads(outputs["json"].read_text(encoding="utf-8"))
+    assert [item["run_name"] for item in payload] == ["20260406-120000"]

@@ -5,6 +5,9 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+OBSOLETE_RUN_MARKERS = {"report-smoke"}
+OBSOLETE_EXPERIMENT_MARKERS = {"report_smoke"}
+
 
 def render_recognition_history_plot(
     *,
@@ -123,6 +126,8 @@ def aggregate_training_runs(
     for run_dir in run_dirs:
         summary_path = run_dir / "training_summary.json"
         payload = json.loads(summary_path.read_text(encoding="utf-8"))
+        if _is_obsolete_run(run_dir=run_dir, payload=payload):
+            continue
         metrics = payload.get("metrics", {})
         records.append(
             {
@@ -169,6 +174,19 @@ def aggregate_training_runs(
     fig.savefig(png_path, dpi=160)
     plt.close(fig)
     return {"json": json_path, "markdown": markdown_path, "png": png_path}
+
+
+def _is_obsolete_run(*, run_dir: Path, payload: dict[str, object]) -> bool:
+    run_id = str(payload.get("run_id", "")).strip().lower()
+    normalized_parts = [part.lower() for part in run_dir.parts]
+    if run_id in OBSOLETE_RUN_MARKERS:
+        return True
+    return any(
+        marker in part
+        for part in normalized_parts
+        for marker in OBSOLETE_EXPERIMENT_MARKERS
+    )
+
 
 
 def _load_history(history_path: Path) -> list[dict[str, float | int]]:

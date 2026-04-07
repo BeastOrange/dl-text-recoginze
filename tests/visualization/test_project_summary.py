@@ -30,9 +30,9 @@ def test_build_project_training_summary_writes_outputs(tmp_path: Path) -> None:
                 }
             ],
             ensure_ascii=False,
-            ),
-            encoding="utf-8",
-        )
+        ),
+        encoding="utf-8",
+    )
 
     outputs = build_project_training_summary(
         detection_summary_json=detection_json,
@@ -42,3 +42,31 @@ def test_build_project_training_summary_writes_outputs(tmp_path: Path) -> None:
 
     assert outputs["json"].exists()
     assert outputs["markdown"].exists()
+
+
+def test_build_project_training_summary_handles_empty_mainline_inputs(tmp_path: Path) -> None:
+    detection_json = tmp_path / "detection_summary.json"
+    recognition_json = tmp_path / "recognition_summary.json"
+    detection_json.write_text("[]", encoding="utf-8")
+    recognition_json.write_text(
+        json.dumps(
+            [
+                {
+                    "run_name": "rec_a",
+                    "primary_metric": 0.77,
+                    "best_checkpoint_path": "/tmp/rec_a.pt",
+                }
+            ],
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    outputs = build_project_training_summary(
+        detection_summary_json=detection_json,
+        recognition_summary_json=recognition_json,
+        output_dir=tmp_path / "reports",
+    )
+
+    content = outputs["markdown"].read_text(encoding="utf-8")
+    assert "No mainline runs available." in content

@@ -7,8 +7,11 @@ from PIL import Image, ImageDraw
 from dltr.models.detection.dataset import load_detection_samples
 from dltr.models.detection.scaffold import load_detection_run_config
 from dltr.models.detection.trainer import (
+    DEFAULT_DETECTION_MODEL_ARCHITECTURE,
     _apply_multi_scale_augmentation,
+    _build_detection_model,
     _build_train_sampler,
+    _prepare_detection_image,
     train_dbnet_detector,
 )
 from dltr.project import ProjectPaths
@@ -144,6 +147,27 @@ def test_apply_multi_scale_augmentation_changes_polygon_scale() -> None:
 
     assert augmented_image.shape == image_np.shape
     assert augmented_polygons[0] != polygons[0]
+
+
+
+
+def test_build_detection_model_uses_improved_default_architecture() -> None:
+    model = _build_detection_model(torch.nn, architecture=DEFAULT_DETECTION_MODEL_ARCHITECTURE)
+    sample = torch.randn(2, 3, 64, 64)
+
+    output = model(sample)
+
+    assert output.shape == (2, 1, 64, 64)
+
+
+def test_prepare_detection_image_normalizes_rgb_input() -> None:
+    image = __import__("numpy").full((16, 16, 3), 255, dtype=__import__("numpy").uint8)
+
+    prepared = _prepare_detection_image(image, target_height=8, target_width=8)
+
+    assert prepared.shape == (8, 8, 3)
+    assert prepared.dtype == __import__("numpy").float32
+    assert float(prepared.mean()) > 0.0
 
 
 def _write_box_image(path: Path) -> None:
