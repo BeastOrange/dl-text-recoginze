@@ -22,6 +22,11 @@ from dltr.project import ProjectPaths
 from dltr.terminal import ProgressBar
 from dltr.visualization.training_reports import render_detection_history_plot
 
+DEFAULT_DETECTION_MODEL_ARCHITECTURE = "dbnet_resunet_v1"
+LEGACY_DETECTION_MODEL_ARCHITECTURE = "dbnet_tiny"
+DETECTION_IMAGE_MEAN = np.asarray([0.485, 0.456, 0.406], dtype=np.float32)
+DETECTION_IMAGE_STD = np.asarray([0.229, 0.224, 0.225], dtype=np.float32)
+
 
 @dataclass(frozen=True)
 class DetectionTrainingResult:
@@ -92,9 +97,10 @@ def train_dbnet_detector(
     )
 
     device = _select_device(torch, config.device)
-    model = _build_dbnet_tiny(nn).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
-    criterion = nn.BCEWithLogitsLoss()
+    model_architecture = DEFAULT_DETECTION_MODEL_ARCHITECTURE
+    model = _build_detection_model(nn, architecture=model_architecture).to(device)
+    optimizer = optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=1e-4)
+    criterion = _build_detection_objective(nn)
     best_checkpoint_path = context.checkpoints_dir / "best.pt"
     history_path = context.run_dir / "training_history.jsonl"
     history_markdown_path = context.run_dir / "training_history.md"
@@ -119,7 +125,7 @@ def train_dbnet_detector(
         for batch_index, (images, masks) in enumerate(train_loader, start=1):
             images = images.to(device)
             masks = masks.to(device)
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
             logits = model(images)
             loss = criterion(logits, masks)
             loss.backward()
@@ -155,6 +161,7 @@ def train_dbnet_detector(
                     "config": asdict(config),
                     "metrics": metrics,
                     "epoch": epoch,
+                    "model_architecture": model_architecture,
                 },
                 best_checkpoint_path,
             )
@@ -174,7 +181,7 @@ def train_dbnet_detector(
     )
     write_experiment_metadata(
         context,
-        notes="DBNet-style tiny segmentation baseline training run.",
+        notes="Improved DBNet-style feature pyramid baseline training run.",
     )
     checkpoint_path = context.checkpoints_dir / "last.pt"
     torch.save(
@@ -182,6 +189,7 @@ def train_dbnet_detector(
             "model_state_dict": model.state_dict(),
             "config": asdict(config),
             "metrics": metrics,
+            "model_architecture": model_architecture,
         },
         checkpoint_path,
     )
@@ -208,6 +216,7 @@ def train_dbnet_detector(
                 "history_plot_path": str(history_plot_paths["png"]),
                 "report_paths": {key: str(value) for key, value in report_paths.items()},
                 "metrics": metrics,
+                "model_architecture": model_architecture,
             },
             ensure_ascii=False,
             indent=2,
@@ -300,9 +309,10 @@ class _TorchDetectionDataset:
                     offset_y=offset_y,
                 )
 
-        image_array = (
-            cv2.resize(image_array, (self.image_width, self.image_height)).astype(np.float32)
-            / 255.0
+        image_array = _prepare_detection_image(
+            image_array,
+            target_height=self.image_height,
+            target_width=self.image_width,
         )
         polygons = [
             _scale_polygon(
@@ -324,6 +334,14 @@ class _TorchDetectionDataset:
         return image_tensor, mask_tensor
 
 
+def _build_detection_model(nn: Any, *, architecture: str) -> Any:
+    if architecture == LEGACY_DETECTION_MODEL_ARCHITECTURE:
+        return _build_dbnet_tiny(nn)
+    if architecture == DEFAULT_DETECTION_MODEL_ARCHITECTURE:
+        return _build_dbnet_resunet(nn)
+    raise ValueError(f"Unsupported detection model architecture: {architecture}")
+
+
 def _build_dbnet_tiny(nn: Any) -> Any:
     class _Detector(nn.Module):
         def __init__(self) -> None:
@@ -342,6 +360,125 @@ def _build_dbnet_tiny(nn: Any) -> Any:
             return self.model(images)
 
     return _Detector()
+
+
+def _build_dbnet_resunet(nn: Any) -> Any:
+    torch = _import_torch()
+    functional = torch.nn.functional
+
+    class _ConvNormAct(nn.Module):
+        def __init__(self, in_channels: int, out_channels: int, *, stride: int = 1) -> None:
+            super().__init__()
+            self.block = nn.Sequential(
+                nn.Conv2d(
+                    in_channels,
+                    out_channels,
+                    kernel_size=3,
+                    stride=stride,
+                    padding=1,
+                    bias=False,
+                ),
+                nn.GroupNorm(_resolve_group_count(out_channels), out_channels),
+                nn.SiLU(inplace=True),
+            )
+
+        def forward(self, inputs):
+            return self.block(inputs)
+
+    class _ResidualBlock(nn.Module):
+        def __init__(self, in_channels: int, out_channels: int, *, stride: int = 1) -> None:
+            super().__init__()
+            self.conv1 = _ConvNormAct(in_channels, out_channels, stride=stride)
+            self.conv2 = nn.Sequential(
+                nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
+                nn.GroupNorm(_resolve_group_count(out_channels), out_channels),
+            )
+            self.shortcut = (
+                nn.Identity()
+                if in_channels == out_channels and stride == 1
+                else nn.Sequential(
+                    nn.Conv2d(
+                        in_channels,
+                        out_channels,
+                        kernel_size=1,
+                        stride=stride,
+                        bias=False,
+                    ),
+                    nn.GroupNorm(_resolve_group_count(out_channels), out_channels),
+                )
+            )
+            self.activation = nn.SiLU(inplace=True)
+
+        def forward(self, inputs):
+            residual = self.shortcut(inputs)
+            outputs = self.conv1(inputs)
+            outputs = self.conv2(outputs)
+            return self.activation(outputs + residual)
+
+    class _FuseBlock(nn.Module):
+        def __init__(self, in_channels: int, skip_channels: int, out_channels: int) -> None:
+            super().__init__()
+            self.refine = _ResidualBlock(in_channels + skip_channels, out_channels)
+
+        def forward(self, current, skip):
+            upsampled = functional.interpolate(
+                current,
+                size=skip.shape[-2:],
+                mode="bilinear",
+                align_corners=False,
+            )
+            return self.refine(torch.cat([upsampled, skip], dim=1))
+
+    class _Detector(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.stem = _ResidualBlock(3, 32)
+            self.down1 = _ResidualBlock(32, 64, stride=2)
+            self.down2 = _ResidualBlock(64, 96, stride=2)
+            self.down3 = _ResidualBlock(96, 128, stride=2)
+            self.context = nn.Sequential(
+                _ResidualBlock(128, 160, stride=2),
+                _ResidualBlock(160, 160),
+            )
+            self.up3 = _FuseBlock(160, 128, 128)
+            self.up2 = _FuseBlock(128, 96, 96)
+            self.up1 = _FuseBlock(96, 64, 64)
+            self.up0 = _FuseBlock(64, 32, 32)
+            self.head = nn.Sequential(
+                _ConvNormAct(32, 32),
+                nn.Conv2d(32, 1, kernel_size=1),
+            )
+
+        def forward(self, images):
+            stem = self.stem(images)
+            down1 = self.down1(stem)
+            down2 = self.down2(down1)
+            down3 = self.down3(down2)
+            context = self.context(down3)
+            up3 = self.up3(context, down3)
+            up2 = self.up2(up3, down2)
+            up1 = self.up1(up2, down1)
+            up0 = self.up0(up1, stem)
+            return self.head(up0)
+
+    return _Detector()
+
+
+def _build_detection_objective(nn: Any) -> Any:
+    class _DetectionObjective(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self._bce = nn.BCEWithLogitsLoss()
+
+        def forward(self, logits, masks):
+            bce = self._bce(logits, masks)
+            probs = logits.sigmoid()
+            intersection = (probs * masks).sum(dim=(1, 2, 3))
+            denominator = probs.sum(dim=(1, 2, 3)) + masks.sum(dim=(1, 2, 3))
+            dice = 1.0 - ((2.0 * intersection + 1.0) / (denominator + 1.0))
+            return 0.6 * bce + 0.4 * dice.mean()
+
+    return _DetectionObjective()
 
 
 def _build_train_sampler(samples) -> Any:
@@ -487,6 +624,25 @@ def _resolve_required_path(root: Path, raw_path: Path | None, field_name: str) -
     if raw_path is None:
         raise ValueError(f"{field_name} must be configured for detector training")
     return (root / raw_path).resolve() if not raw_path.is_absolute() else raw_path.resolve()
+
+
+def _prepare_detection_image(
+    image_array: np.ndarray,
+    *,
+    target_height: int,
+    target_width: int,
+) -> np.ndarray:
+    if image_array.ndim == 2:
+        image_array = np.repeat(image_array[..., None], 3, axis=2)
+    resized = cv2.resize(image_array, (target_width, target_height)).astype(np.float32) / 255.0
+    return (resized - DETECTION_IMAGE_MEAN) / DETECTION_IMAGE_STD
+
+
+def _resolve_group_count(channels: int) -> int:
+    for candidate in (16, 8, 4, 2, 1):
+        if channels % candidate == 0:
+            return candidate
+    return 1
 
 
 def _scale_polygon(
