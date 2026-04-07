@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+MAINLINE_TASKS = ("detection", "recognition")
+
 
 def build_project_training_summary(
     *,
@@ -26,24 +28,26 @@ def build_project_training_summary(
             [
                 "# Project Training Summary",
                 "",
+                "> Mainline OCR summary includes detection and recognition only.",
+                "> Obsolete smoke and extension artifacts are excluded.",
+                "",
                 "## Detection",
                 "",
             ]
-            + [
-                f"- `{item['run_name']}`: `{item['primary_metric']:.6f}`"
-                for item in detection
-            ]
+            + _format_task_lines(detection)
             + [
                 "",
                 "## Recognition",
                 "",
             ]
-            + [
-                f"- `{item['run_name']}`: `{item['primary_metric']:.6f}`"
-                for item in recognition
-            ]
+            + _format_task_lines(recognition)
         )
         + "\n",
         encoding="utf-8",
     )
     return {"json": json_path, "markdown": markdown_path}
+
+def _format_task_lines(records: list[dict[str, object]]) -> list[str]:
+    if not records:
+        return ["- No mainline runs available."]
+    return [f"- `{item['run_name']}`: `{item['primary_metric']:.6f}`" for item in records]
