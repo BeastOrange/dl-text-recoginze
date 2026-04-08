@@ -72,3 +72,30 @@ def test_parser_supports_end2end_training_command() -> None:
 
     assert parsed.group == "train"
     assert parsed.command == "end2end"
+
+
+def test_parser_supports_resume_for_training_commands() -> None:
+    parser = build_parser()
+
+    detector = parser.parse_args(
+        ["train", "detector", "--resume-from", "artifacts/detection/run-1"]
+    )
+    recognizer = parser.parse_args(
+        ["train", "recognizer", "--resume-from", "artifacts/checkpoints/recognition/run-1"]
+    )
+    end2end = parser.parse_args(
+        [
+            "train",
+            "end2end",
+            "--detector-config",
+            "configs/detection/dbnet_baseline.yaml",
+            "--recognizer-config",
+            "configs/recognition/transformer_baseline.yaml",
+            "--resume-from",
+            "artifacts/end2end/run-1",
+        ]
+    )
+
+    assert detector.resume_from == "artifacts/detection/run-1"
+    assert recognizer.resume_from == "artifacts/checkpoints/recognition/run-1"
+    assert end2end.resume_from == "artifacts/end2end/run-1"

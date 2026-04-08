@@ -182,6 +182,66 @@ def test_train_transformer_recognizer_runs_smoke_epoch(tmp_path: Path) -> None:
     assert result.metrics.samples == 2
 
 
+def test_train_crnn_recognizer_resumes_from_checkpoint_file(tmp_path: Path) -> None:
+    config = _build_recognition_smoke_config(
+        tmp_path,
+        model_name="crnn",
+        experiment_name="crnn_resume",
+    )
+    initial = train_crnn_recognizer(
+        config,
+        paths=ProjectPaths.from_root(tmp_path),
+        run_id="resume-run",
+    )
+    resumed_config = _build_recognition_smoke_config(
+        tmp_path,
+        model_name="crnn",
+        experiment_name="crnn_resume",
+        epochs=2,
+    )
+
+    resumed = train_crnn_recognizer(
+        resumed_config,
+        paths=ProjectPaths.from_root(tmp_path),
+        resume_from=initial.checkpoint_path,
+    )
+
+    history_lines = resumed.history_path.read_text(encoding="utf-8").splitlines()
+    assert resumed.run_dir == initial.run_dir
+    assert len(history_lines) == 2
+    assert json.loads(history_lines[-1])["epoch"] == 2
+
+
+def test_train_transformer_recognizer_resumes_from_run_dir(tmp_path: Path) -> None:
+    config = _build_recognition_smoke_config(
+        tmp_path,
+        model_name="transformer",
+        experiment_name="transformer_resume",
+    )
+    initial = train_transformer_recognizer(
+        config,
+        paths=ProjectPaths.from_root(tmp_path),
+        run_id="resume-run",
+    )
+    resumed_config = _build_recognition_smoke_config(
+        tmp_path,
+        model_name="transformer",
+        experiment_name="transformer_resume",
+        epochs=2,
+    )
+
+    resumed = train_transformer_recognizer(
+        resumed_config,
+        paths=ProjectPaths.from_root(tmp_path),
+        resume_from=initial.run_dir,
+    )
+
+    history_lines = resumed.history_path.read_text(encoding="utf-8").splitlines()
+    assert resumed.run_dir == initial.run_dir
+    assert len(history_lines) == 2
+    assert json.loads(history_lines[-1])["epoch"] == 2
+
+
 def test_build_runtime_optimizations_enables_cuda_fast_path() -> None:
     runtime = _build_runtime_optimizations(device="cuda", num_workers=8)
 
@@ -205,3 +265,76 @@ def _write_text_image(path: Path, text: str) -> None:
     draw = ImageDraw.Draw(image)
     draw.text((8, 8), text, fill=0)
     image.save(path)
+
+
+def _build_recognition_smoke_config(
+    tmp_path: Path,
+    *,
+    model_name: str,
+    experiment_name: str,
+    epochs: int = 1,
+):
+    (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
+
+    train_manifest = tmp_path / "data" / "processed" / "recognition_splits" / "train.jsonl"
+    val_manifest = tmp_path / "data" / "processed" / "recognition_splits" / "val.jsonl"
+    charset_path = tmp_path / "data" / "processed" / "charset_zh_mixed.txt"
+    train_manifest.parent.mkdir(parents=True, exist_ok=True)
+    charset_path.parent.mkdir(parents=True, exist_ok=True)
+
+    image_a = tmp_path / f"{experiment_name}_a.png"
+    image_b = tmp_path / f"{experiment_name}_b.png"
+    _write_text_image(image_a, "营业")
+    _write_text_image(image_b, "时间")
+    train_manifest.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "dataset": "rects",
+                        "image_path": str(image_a),
+                        "label_path": str(image_a.with_suffix(".json")),
+                        "text": "营业",
+                    },
+                    ensure_ascii=False,
+                ),
+                json.dumps(
+                    {
+                        "dataset": "shopsign",
+                        "image_path": str(image_b),
+                        "label_path": str(image_b.with_suffix(".txt")),
+                        "text": "时间",
+                    },
+                    ensure_ascii=False,
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    val_manifest.write_text(train_manifest.read_text(encoding="utf-8"), encoding="utf-8")
+    charset_path.write_text("营\n业\n时\n间\n", encoding="utf-8")
+
+    config_path = tmp_path / "configs" / "recognition" / f"{experiment_name}.yaml"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        "\n".join(
+            [
+                f"experiment_name: {experiment_name}",
+                f"model_name: {model_name}",
+                "dataset_manifest: data/processed/recognition_splits/train.jsonl",
+                "validation_manifest: data/processed/recognition_splits/val.jsonl",
+                "charset_file: data/processed/charset_zh_mixed.txt",
+                f"output_dir: artifacts/checkpoints/recognition/{experiment_name}",
+                f"epochs: {epochs}",
+                "batch_size: 2",
+                "image_height: 32",
+                "image_width: 128",
+                "learning_rate: 0.001",
+                "device: cpu",
+                "num_workers: 0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return load_recognition_config(config_path)

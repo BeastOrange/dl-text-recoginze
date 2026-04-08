@@ -403,6 +403,9 @@ def cmd_train_detector(args: argparse.Namespace) -> int:
             config,
             paths=ensure_runtime_dirs(),
             run_id=args.run_id,
+            resume_from=(
+                _resolve_existing_path_arg(args.resume_from) if args.resume_from else None
+            ),
         )
     except RuntimeError as exc:
         print(str(exc))
@@ -448,12 +451,18 @@ def cmd_train_recognizer(args: argparse.Namespace) -> int:
                 config,
                 paths=ensure_runtime_dirs(),
                 run_id=args.run_id,
+                resume_from=(
+                    _resolve_existing_path_arg(args.resume_from) if args.resume_from else None
+                ),
             )
         elif config.model_name == "transformer":
             result = train_transformer_recognizer(
                 config,
                 paths=ensure_runtime_dirs(),
                 run_id=args.run_id,
+                resume_from=(
+                    _resolve_existing_path_arg(args.resume_from) if args.resume_from else None
+                ),
             )
         else:
             print(f"Unsupported recognition model: {config.model_name}")
@@ -507,6 +516,9 @@ def cmd_train_end2end(args: argparse.Namespace) -> int:
         recognizer_config,
         paths=ensure_runtime_dirs(),
         run_id=args.run_id,
+        resume_from=(
+            _resolve_existing_path_arg(args.resume_from) if args.resume_from else None
+        ),
         output_dir=output_dir,
         max_train_batches=args.max_train_batches,
         max_val_batches=args.max_val_batches,

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+from contextlib import nullcontext
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +22,7 @@ from dltr.models.detection.scaffold import (
 )
 from dltr.project import ProjectPaths
 from dltr.terminal import ProgressBar
+from dltr.torch_checkpoint import load_torch_checkpoint
 from dltr.visualization.training_reports import render_detection_history_plot
 
 DEFAULT_DETECTION_MODEL_ARCHITECTURE = "dbnet_resunet_v1"
@@ -40,11 +43,20 @@ class DetectionTrainingResult:
     report_paths: dict[str, Path]
 
 
+@dataclass(frozen=True)
+class DetectionRuntimeOptimizations:
+    pin_memory: bool
+    non_blocking: bool
+    use_amp: bool
+    loader_kwargs: dict[str, bool | int]
+
+
 def train_dbnet_detector(
     config: DetectionRunConfig,
     *,
     paths: ProjectPaths | None = None,
     run_id: str | None = None,
+    resume_from: str | Path | None = None,
 ) -> DetectionTrainingResult:
     torch = _import_torch()
     nn = torch.nn
@@ -52,7 +64,13 @@ def train_dbnet_detector(
     data_utils = torch.utils.data
 
     project_paths = paths or ProjectPaths.from_root()
-    context = prepare_detection_run(config, paths=project_paths, run_id=run_id)
+    context, resume_checkpoint = _prepare_detection_context(
+        config,
+        paths=project_paths,
+        run_id=run_id,
+        resume_from=resume_from,
+        torch=torch,
+    )
     train_manifest = _resolve_required_path(
         project_paths.root,
         config.train_manifest,
@@ -69,6 +87,13 @@ def train_dbnet_detector(
         raise ValueError(f"No detection training samples found in {train_manifest}")
     if not val_samples:
         raise ValueError(f"No detection validation samples found in {val_manifest}")
+
+    device = _select_device(torch, config.device)
+    runtime = _build_detection_runtime_optimizations(
+        device=device,
+        num_workers=config.num_workers,
+    )
+    _configure_detection_cuda_backend(torch, device=device)
 
     train_dataset = _TorchDetectionDataset(
         train_samples,
@@ -88,25 +113,49 @@ def train_dbnet_detector(
         shuffle=train_sampler is None,
         sampler=train_sampler,
         num_workers=config.num_workers,
+        **runtime.loader_kwargs,
     )
     val_loader = data_utils.DataLoader(
         val_dataset,
         batch_size=max(1, min(config.batch_size, 8)),
         shuffle=False,
         num_workers=config.num_workers,
+        **runtime.loader_kwargs,
     )
 
-    device = _select_device(torch, config.device)
     model_architecture = DEFAULT_DETECTION_MODEL_ARCHITECTURE
     model = _build_detection_model(nn, architecture=model_architecture).to(device)
     optimizer = optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=1e-4)
     criterion = _build_detection_objective(nn)
+    scaler = _build_detection_grad_scaler(torch, use_amp=runtime.use_amp)
     best_checkpoint_path = context.checkpoints_dir / "best.pt"
     history_path = context.run_dir / "training_history.jsonl"
     history_markdown_path = context.run_dir / "training_history.md"
     best_hmean = float("-inf")
     metrics = {"precision": 0.0, "recall": 0.0, "hmean": 0.0}
-    history: list[dict[str, float | int]] = []
+    history = _load_existing_history(history_path)
+    start_epoch = 1
+
+    if resume_checkpoint is not None:
+        model.load_state_dict(resume_checkpoint["model_state_dict"])
+        optimizer_state = resume_checkpoint.get("optimizer_state_dict")
+        if isinstance(optimizer_state, dict):
+            optimizer.load_state_dict(optimizer_state)
+        scaler_state = resume_checkpoint.get("scaler_state_dict")
+        if scaler is not None and isinstance(scaler_state, dict):
+            scaler.load_state_dict(scaler_state)
+        start_epoch = int(resume_checkpoint.get("epoch", 0)) + 1
+        previous_metrics = resume_checkpoint.get("metrics", {})
+        if isinstance(previous_metrics, dict):
+            metrics = {
+                "precision": float(previous_metrics.get("precision", 0.0)),
+                "recall": float(previous_metrics.get("recall", 0.0)),
+                "hmean": float(previous_metrics.get("hmean", 0.0)),
+            }
+        best_hmean = max(
+            metrics["hmean"],
+            max((float(item.get("val_hmean", 0.0)) for item in history), default=float("-inf")),
+        )
 
     print(
         f"检测训练开始：设备={device} 训练样本={len(train_dataset)} "
@@ -114,7 +163,7 @@ def train_dbnet_detector(
         flush=True,
     )
 
-    for epoch in range(1, config.epochs + 1):
+    for epoch in range(start_epoch, config.epochs + 1):
         model.train()
         train_loss_total = 0.0
         train_batches = 0
@@ -123,13 +172,19 @@ def train_dbnet_detector(
             description=f"检测训练 第 {epoch}/{config.epochs} 轮",
         )
         for batch_index, (images, masks) in enumerate(train_loader, start=1):
-            images = images.to(device)
-            masks = masks.to(device)
+            images = images.to(device, non_blocking=runtime.non_blocking)
+            masks = masks.to(device, non_blocking=runtime.non_blocking)
             optimizer.zero_grad(set_to_none=True)
-            logits = model(images)
-            loss = criterion(logits, masks)
-            loss.backward()
-            optimizer.step()
+            with _detection_autocast_context(torch, use_amp=runtime.use_amp):
+                logits = model(images)
+                loss = criterion(logits, masks)
+            if scaler is not None:
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                loss.backward()
+                optimizer.step()
             train_loss_total += float(loss.item())
             train_batches += 1
             train_progress.update(batch_index, metrics={"loss": float(loss.item())})
@@ -140,6 +195,7 @@ def train_dbnet_detector(
             val_loader,
             device,
             torch,
+            runtime=runtime,
             epoch=epoch,
             total_epochs=config.epochs,
         )
@@ -162,6 +218,8 @@ def train_dbnet_detector(
                     "metrics": metrics,
                     "epoch": epoch,
                     "model_architecture": model_architecture,
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "scaler_state_dict": scaler.state_dict() if scaler is not None else None,
                 },
                 best_checkpoint_path,
             )
@@ -190,6 +248,9 @@ def train_dbnet_detector(
             "config": asdict(config),
             "metrics": metrics,
             "model_architecture": model_architecture,
+            "optimizer_state_dict": optimizer.state_dict(),
+            "scaler_state_dict": scaler.state_dict() if scaler is not None else None,
+            "epoch": config.epochs,
         },
         checkpoint_path,
     )
@@ -235,6 +296,73 @@ def train_dbnet_detector(
     )
 
 
+def _prepare_detection_context(
+    config: DetectionRunConfig,
+    *,
+    paths: ProjectPaths,
+    run_id: str | None,
+    resume_from: str | Path | None,
+    torch: Any,
+) -> tuple[DetectionRunContext, dict[str, Any] | None]:
+    if resume_from is None:
+        return prepare_detection_run(config, paths=paths, run_id=run_id), None
+
+    resume_path = _resolve_resume_path(resume_from)
+    checkpoint_path, run_dir = _resolve_resume_checkpoint_and_run_dir(resume_path)
+    checkpoint = load_torch_checkpoint(torch, checkpoint_path, map_location="cpu")
+    context = DetectionRunContext(
+        config=config,
+        run_id=run_dir.name,
+        run_dir=run_dir,
+        checkpoints_dir=run_dir / "checkpoints",
+        logs_dir=run_dir / "logs",
+        reports_dir=run_dir / "reports",
+        exports_dir=run_dir / "exports",
+        created_at=datetime.now(UTC).isoformat(),
+    )
+    return context, checkpoint
+
+
+def _resolve_resume_path(value: str | Path) -> Path:
+    path = Path(value)
+    return path.resolve() if path.is_absolute() else (Path.cwd() / path).resolve()
+
+
+def _resolve_resume_checkpoint_and_run_dir(resume_path: Path) -> tuple[Path, Path]:
+    if resume_path.is_dir():
+        candidates = (
+            resume_path / "checkpoints" / "last.pt",
+            resume_path / "last.pt",
+            resume_path / "checkpoints" / "best.pt",
+            resume_path / "best.pt",
+        )
+        for candidate in candidates:
+            if candidate.exists():
+                checkpoint_path = candidate
+                break
+        else:
+            raise FileNotFoundError(f"No resumable checkpoint found under: {resume_path}")
+    else:
+        checkpoint_path = resume_path
+
+    run_dir = (
+        checkpoint_path.parent.parent
+        if checkpoint_path.parent.name == "checkpoints"
+        else checkpoint_path.parent
+    )
+    return checkpoint_path, run_dir
+
+
+def _load_existing_history(history_path: Path) -> list[dict[str, float | int]]:
+    if not history_path.exists():
+        return []
+    return [
+        json.loads(line)
+        for line in history_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+
 def _import_torch() -> Any:
     try:
         import torch
@@ -254,6 +382,53 @@ def _select_device(torch: Any, configured_device: str) -> str:
     if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
         return "mps"
     return "cpu"
+
+
+def _build_detection_runtime_optimizations(
+    *,
+    device: str,
+    num_workers: int,
+) -> DetectionRuntimeOptimizations:
+    is_cuda = device == "cuda"
+    loader_kwargs: dict[str, bool | int] = {
+        "pin_memory": is_cuda,
+    }
+    if num_workers > 0:
+        loader_kwargs["persistent_workers"] = True
+        loader_kwargs["prefetch_factor"] = 4 if is_cuda else 2
+    return DetectionRuntimeOptimizations(
+        pin_memory=is_cuda,
+        non_blocking=is_cuda,
+        use_amp=is_cuda,
+        loader_kwargs=loader_kwargs,
+    )
+
+
+def _configure_detection_cuda_backend(torch: Any, *, device: str) -> None:
+    if device != "cuda":
+        return
+    if hasattr(torch.backends, "cudnn"):
+        torch.backends.cudnn.benchmark = True
+        if hasattr(torch.backends.cudnn, "allow_tf32"):
+            torch.backends.cudnn.allow_tf32 = True
+    if hasattr(torch.backends, "cuda") and hasattr(torch.backends.cuda, "matmul"):
+        torch.backends.cuda.matmul.allow_tf32 = True
+    if hasattr(torch, "set_float32_matmul_precision"):
+        torch.set_float32_matmul_precision("high")
+
+
+def _build_detection_grad_scaler(torch: Any, *, use_amp: bool) -> Any | None:
+    if not use_amp:
+        return None
+    if hasattr(torch, "amp") and hasattr(torch.amp, "GradScaler"):
+        return torch.amp.GradScaler("cuda", enabled=True)
+    return torch.cuda.amp.GradScaler(enabled=True)
+
+
+def _detection_autocast_context(torch: Any, *, use_amp: bool) -> Any:
+    if not use_amp:
+        return nullcontext()
+    return torch.autocast(device_type="cuda", dtype=torch.float16)
 
 
 class _TorchDetectionDataset:
@@ -588,6 +763,7 @@ def _evaluate_detector(
     device: str,
     torch: Any,
     *,
+    runtime: DetectionRuntimeOptimizations,
     epoch: int,
     total_epochs: int,
 ) -> dict[str, float]:
@@ -600,7 +776,9 @@ def _evaluate_detector(
     )
     with torch.no_grad():
         for batch_index, (images, masks) in enumerate(loader, start=1):
-            logits = model(images.to(device))
+            images = images.to(device, non_blocking=runtime.non_blocking)
+            with _detection_autocast_context(torch, use_amp=runtime.use_amp):
+                logits = model(images)
             probs = torch.sigmoid(logits)
             metrics = compute_detection_scores(probs.cpu(), masks.cpu())
             for key, value in metrics.items():

@@ -58,11 +58,13 @@ def train_crnn_recognizer(
     *,
     paths: ProjectPaths | None = None,
     run_id: str | None = None,
+    resume_from: str | Path | None = None,
 ) -> RecognitionTrainingResult:
     return _train_ctc_recognizer(
         config,
         paths=paths,
         run_id=run_id,
+        resume_from=resume_from,
         model_builder=_build_crnn_model,
         training_note="CRNN baseline training run.",
     )
@@ -73,11 +75,13 @@ def train_transformer_recognizer(
     *,
     paths: ProjectPaths | None = None,
     run_id: str | None = None,
+    resume_from: str | Path | None = None,
 ) -> RecognitionTrainingResult:
     return _train_ctc_recognizer(
         config,
         paths=paths,
         run_id=run_id,
+        resume_from=resume_from,
         model_builder=_build_transformer_model,
         training_note="Transformer-CTC baseline training run.",
     )
@@ -88,6 +92,7 @@ def _train_ctc_recognizer(
     *,
     paths: ProjectPaths | None = None,
     run_id: str | None = None,
+    resume_from: str | Path | None = None,
     model_builder: Any,
     training_note: str,
 ) -> RecognitionTrainingResult:
@@ -115,8 +120,21 @@ def _train_ctc_recognizer(
     if not val_samples:
         raise ValueError(f"No validation samples found in {val_manifest}")
 
-    resolved_run_id = run_id or datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-    run_dir = (project_paths.root / config.output_dir / resolved_run_id).resolve()
+    resume_state = _load_resume_state(
+        torch=torch,
+        project_root=project_paths.root,
+        resume_from=resume_from,
+    )
+    resolved_run_id = (
+        resume_state.run_dir.name
+        if resume_state is not None
+        else (run_id or datetime.now(UTC).strftime("%Y%m%d-%H%M%S"))
+    )
+    run_dir = (
+        resume_state.run_dir
+        if resume_state is not None
+        else (project_paths.root / config.output_dir / resolved_run_id).resolve()
+    )
     run_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_path = run_dir / "last.pt"
     best_checkpoint_path = run_dir / "best.pt"
@@ -163,8 +181,8 @@ def _train_ctc_recognizer(
     criterion = nn.CTCLoss(blank=vocabulary.blank_index, zero_infinity=True)
     optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
     scaler = _build_grad_scaler(torch, use_amp=runtime.use_amp)
-    history: list[dict[str, float | int]] = []
-    best_word_accuracy = float("-inf")
+    history: list[dict[str, float | int]] = list(resume_state.history) if resume_state else []
+    best_word_accuracy = resume_state.best_word_accuracy if resume_state else float("-inf")
     metrics = RecognitionMetrics(
         samples=1,
         word_accuracy=0.0,
@@ -172,6 +190,31 @@ def _train_ctc_recognizer(
         ned=1.0,
         mean_edit_distance=1.0,
     )
+    start_epoch = 1
+
+    if resume_state is not None:
+        model.load_state_dict(resume_state.checkpoint["model_state_dict"])
+        optimizer_state = resume_state.checkpoint.get("optimizer_state_dict")
+        if isinstance(optimizer_state, dict):
+            optimizer.load_state_dict(optimizer_state)
+        scaler_state = resume_state.checkpoint.get("scaler_state_dict")
+        if scaler is not None and isinstance(scaler_state, dict):
+            scaler.load_state_dict(scaler_state)
+        raw_metrics = resume_state.checkpoint.get("metrics")
+        if isinstance(raw_metrics, dict):
+            metrics = RecognitionMetrics(
+                samples=int(raw_metrics.get("samples", 1)),
+                word_accuracy=float(raw_metrics.get("word_accuracy", 0.0)),
+                cer=float(raw_metrics.get("cer", 1.0)),
+                ned=float(raw_metrics.get("ned", 1.0)),
+                mean_edit_distance=float(raw_metrics.get("mean_edit_distance", 1.0)),
+                latency_ms=(
+                    float(raw_metrics["latency_ms"])
+                    if raw_metrics.get("latency_ms") is not None
+                    else None
+                ),
+            )
+        start_epoch = resume_state.start_epoch
 
     print(
         f"识别训练开始：设备={device} 训练样本={len(train_dataset)} "
@@ -179,7 +222,7 @@ def _train_ctc_recognizer(
         flush=True,
     )
 
-    for epoch in range(1, config.epochs + 1):
+    for epoch in range(start_epoch, config.epochs + 1):
         model.train()
         train_loss_total = 0.0
         train_batches = 0
@@ -251,6 +294,8 @@ def _train_ctc_recognizer(
             torch.save(
                 {
                     "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "scaler_state_dict": scaler.state_dict() if scaler is not None else None,
                     "config": asdict(config),
                     "metrics": asdict(metrics),
                     "epoch": epoch,
@@ -276,8 +321,11 @@ def _train_ctc_recognizer(
     torch.save(
         {
             "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "scaler_state_dict": scaler.state_dict() if scaler is not None else None,
             "config": asdict(config),
             "metrics": asdict(metrics),
+            "epoch": history[-1]["epoch"] if history else 0,
         },
         checkpoint_path,
     )
@@ -305,6 +353,7 @@ def _train_ctc_recognizer(
                 "history_plot_path": str(history_plot_paths["png"]),
                 "report_path": str(report_path),
                 "metrics": asdict(metrics),
+                "epoch": history[-1]["epoch"] if history else 0,
             },
             ensure_ascii=False,
             indent=2,
@@ -322,6 +371,89 @@ def _train_ctc_recognizer(
         report_path=report_path,
         metrics=metrics,
     )
+
+
+@dataclass(frozen=True)
+class RecognitionResumeState:
+    run_dir: Path
+    checkpoint_path: Path
+    checkpoint: dict[str, Any]
+    history: list[dict[str, float | int]]
+    start_epoch: int
+    best_word_accuracy: float
+
+
+def _load_resume_state(
+    *,
+    torch: Any,
+    project_root: Path,
+    resume_from: str | Path | None,
+) -> RecognitionResumeState | None:
+    if resume_from is None:
+        return None
+    raw_path = Path(resume_from)
+    resolved_path = (
+        raw_path.resolve()
+        if raw_path.is_absolute()
+        else (project_root / raw_path).resolve()
+    )
+    if not resolved_path.exists():
+        raise FileNotFoundError(f"Resume path not found: {resolved_path}")
+    checkpoint_path = (
+        _resolve_resume_checkpoint(resolved_path)
+        if resolved_path.is_dir()
+        else resolved_path
+    )
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    run_dir = checkpoint_path.parent
+    if checkpoint_path.parent.name == "checkpoints":
+        run_dir = checkpoint_path.parent.parent
+    history_path = run_dir / "training_history.jsonl"
+    history = _load_history(history_path)
+    start_epoch = int(checkpoint.get("epoch", len(history))) + 1
+    best_word_accuracy = _infer_best_word_accuracy(history, checkpoint)
+    return RecognitionResumeState(
+        run_dir=run_dir,
+        checkpoint_path=checkpoint_path,
+        checkpoint=checkpoint,
+        history=history,
+        start_epoch=start_epoch,
+        best_word_accuracy=best_word_accuracy,
+    )
+
+
+def _resolve_resume_checkpoint(path: Path) -> Path:
+    for candidate in (
+        path / "last.pt",
+        path / "best.pt",
+        path / "checkpoints" / "last.pt",
+        path / "checkpoints" / "best.pt",
+    ):
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(f"No checkpoint found in run dir: {path}")
+
+
+def _load_history(history_path: Path) -> list[dict[str, float | int]]:
+    if not history_path.exists():
+        return []
+    return [
+        json.loads(line)
+        for line in history_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+
+def _infer_best_word_accuracy(
+    history: list[dict[str, float | int]],
+    checkpoint: dict[str, Any],
+) -> float:
+    if history:
+        return max(float(item["val_word_accuracy"]) for item in history)
+    raw_metrics = checkpoint.get("metrics", {})
+    if isinstance(raw_metrics, dict):
+        return float(raw_metrics.get("word_accuracy", 0.0))
+    return float("-inf")
 
 
 def _import_torch() -> Any:

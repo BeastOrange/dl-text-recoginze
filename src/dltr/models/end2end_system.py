@@ -359,6 +359,7 @@ def train_end2end_multitask_system(
     *,
     paths: ProjectPaths | None = None,
     run_id: str | None = None,
+    resume_from: str | Path | None = None,
     output_dir: Path | None = None,
     max_train_batches: int | None = None,
     max_val_batches: int | None = None,
@@ -369,8 +370,15 @@ def train_end2end_multitask_system(
     data_utils = torch.utils.data
 
     project_paths = paths or ProjectPaths.from_root()
-    resolved_run_id = run_id or datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-    run_dir = output_dir or (project_paths.artifacts / "end2end" / resolved_run_id)
+    resume_checkpoint_path = _resolve_resume_checkpoint_path(resume_from)
+    if resume_checkpoint_path is not None:
+        run_dir = resume_checkpoint_path.parent
+        if output_dir is not None and output_dir.resolve() != run_dir.resolve():
+            raise ValueError("resume_from must target the same run_dir as output_dir")
+        resolved_run_id = run_dir.name
+    else:
+        resolved_run_id = run_id or datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+        run_dir = output_dir or (project_paths.artifacts / "end2end" / resolved_run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
 
     det_train_path = _resolve_required_path(project_paths.root, detector_config.train_manifest)
@@ -477,10 +485,33 @@ def train_end2end_multitask_system(
         ned=1.0,
         mean_edit_distance=1.0,
     )
+    start_epoch = 1
+
+    if resume_checkpoint_path is not None:
+        resume_payload = load_torch_checkpoint(torch, resume_checkpoint_path, map_location=device)
+        model.load_state_dict(resume_payload["model_state_dict"])
+        optimizer_state = resume_payload.get("optimizer_state_dict")
+        if isinstance(optimizer_state, dict):
+            optimizer.load_state_dict(optimizer_state)
+        scaler_state = resume_payload.get("scaler_state_dict")
+        if scaler is not None and isinstance(scaler_state, dict):
+            scaler.load_state_dict(scaler_state)
+        history = [dict(item) for item in resume_payload.get("history", [])]
+        start_epoch = int(resume_payload.get("epoch", 0)) + 1
+        best_score = float(resume_payload.get("best_score", float("-inf")))
+        detector_metrics = {
+            key: float(value)
+            for key, value in resume_payload.get("detector_metrics", detector_metrics).items()
+        }
+        recognizer_metrics = _recognition_metrics_from_payload(
+            resume_payload.get("recognizer_metrics", asdict(recognizer_metrics))
+        )
 
     total_epochs = max(detector_config.epochs, recognizer_config.epochs)
     rec_train_iter = _endless_loader(rec_train_loader)
-    for epoch in range(1, total_epochs + 1):
+    completed_epoch = start_epoch - 1
+    for epoch in range(start_epoch, total_epochs + 1):
+        completed_epoch = epoch
         model.train()
         train_loss_total = 0.0
         train_steps = 0
@@ -572,34 +603,33 @@ def train_end2end_multitask_system(
         if system_score >= best_score:
             best_score = system_score
             torch.save(
-                {
-                    "model_state_dict": model.state_dict(),
-                    "config": {
-                        "device": recognizer_config.device,
-                        "detector": asdict(detector_config),
-                        "recognizer": asdict(recognizer_config),
-                    },
-                    "metrics": {
-                        "system_score": system_score,
-                        "detector_hmean": detector_metrics["hmean"],
-                        "recognizer_word_accuracy": recognizer_metrics.word_accuracy,
-                    },
-                },
+                _build_training_checkpoint_payload(
+                    model=model,
+                    optimizer=optimizer,
+                    scaler=scaler,
+                    detector_config=detector_config,
+                    recognizer_config=recognizer_config,
+                    epoch=epoch,
+                    history=history,
+                    best_score=best_score,
+                    detector_metrics=detector_metrics,
+                    recognizer_metrics=recognizer_metrics,
+                ),
                 best_checkpoint_path,
             )
     torch.save(
-        {
-            "model_state_dict": model.state_dict(),
-            "config": {
-                "device": recognizer_config.device,
-                "detector": asdict(detector_config),
-                "recognizer": asdict(recognizer_config),
-            },
-            "metrics": {
-                "detector_hmean": detector_metrics["hmean"],
-                "recognizer_word_accuracy": recognizer_metrics.word_accuracy,
-            },
-        },
+        _build_training_checkpoint_payload(
+            model=model,
+            optimizer=optimizer,
+            scaler=scaler,
+            detector_config=detector_config,
+            recognizer_config=recognizer_config,
+            epoch=completed_epoch,
+            history=history,
+            best_score=best_score,
+            detector_metrics=detector_metrics,
+            recognizer_metrics=recognizer_metrics,
+        ),
         checkpoint_path,
     )
     history_path.write_text(
@@ -779,6 +809,80 @@ def _write_proxy_summary(
         encoding="utf-8",
     )
     return summary_path
+
+
+def _resolve_resume_checkpoint_path(resume_from: str | Path | None) -> Path | None:
+    if not resume_from:
+        return None
+    path = Path(resume_from).resolve()
+    if path.is_dir():
+        for candidate in (path / "last.pt", path / "best.pt"):
+            if candidate.exists():
+                return candidate
+        raise FileNotFoundError(f"No resume checkpoint found in run dir: {path}")
+    if not path.exists():
+        raise FileNotFoundError(f"Resume checkpoint not found: {path}")
+    return path
+
+
+def _recognition_metrics_from_payload(payload: Any) -> RecognitionMetrics:
+    if not isinstance(payload, dict):
+        return RecognitionMetrics(
+            samples=0,
+            word_accuracy=0.0,
+            cer=1.0,
+            ned=1.0,
+            mean_edit_distance=1.0,
+        )
+    return RecognitionMetrics(
+        samples=int(payload.get("samples", 0)),
+        word_accuracy=float(payload.get("word_accuracy", 0.0)),
+        cer=float(payload.get("cer", 1.0)),
+        ned=float(payload.get("ned", 1.0)),
+        mean_edit_distance=float(payload.get("mean_edit_distance", 1.0)),
+        latency_ms=(
+            float(payload["latency_ms"])
+            if payload.get("latency_ms") is not None
+            else None
+        ),
+    )
+
+
+def _build_training_checkpoint_payload(
+    *,
+    model: Any,
+    optimizer: Any,
+    scaler: Any | None,
+    detector_config: DetectionRunConfig,
+    recognizer_config: RecognitionExperimentConfig,
+    epoch: int,
+    history: list[dict[str, float | int]],
+    best_score: float,
+    detector_metrics: dict[str, float],
+    recognizer_metrics: RecognitionMetrics,
+) -> dict[str, Any]:
+    payload = {
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "config": {
+            "device": recognizer_config.device,
+            "detector": asdict(detector_config),
+            "recognizer": asdict(recognizer_config),
+        },
+        "metrics": {
+            "system_score": best_score,
+            "detector_hmean": detector_metrics["hmean"],
+            "recognizer_word_accuracy": recognizer_metrics.word_accuracy,
+        },
+        "epoch": epoch,
+        "history": history,
+        "best_score": best_score,
+        "detector_metrics": detector_metrics,
+        "recognizer_metrics": asdict(recognizer_metrics),
+    }
+    if scaler is not None:
+        payload["scaler_state_dict"] = scaler.state_dict()
+    return payload
 
 
 def _endless_loader(loader: Any):

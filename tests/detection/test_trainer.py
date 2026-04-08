@@ -1,15 +1,17 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 from PIL import Image, ImageDraw
 
 from dltr.models.detection.dataset import load_detection_samples
-from dltr.models.detection.scaffold import load_detection_run_config
+from dltr.models.detection.scaffold import DetectionRunConfig, load_detection_run_config
 from dltr.models.detection.trainer import (
     DEFAULT_DETECTION_MODEL_ARCHITECTURE,
     _apply_multi_scale_augmentation,
     _build_detection_model,
+    _build_detection_runtime_optimizations,
     _build_train_sampler,
     _prepare_detection_image,
     train_dbnet_detector,
@@ -170,8 +172,118 @@ def test_prepare_detection_image_normalizes_rgb_input() -> None:
     assert float(prepared.mean()) > 0.0
 
 
+def test_build_detection_runtime_optimizations_enables_cuda_fastpath() -> None:
+    runtime = _build_detection_runtime_optimizations(device="cuda", num_workers=4)
+
+    assert runtime.pin_memory is True
+    assert runtime.non_blocking is True
+    assert runtime.use_amp is True
+    assert runtime.loader_kwargs["pin_memory"] is True
+    assert runtime.loader_kwargs["persistent_workers"] is True
+    assert runtime.loader_kwargs["prefetch_factor"] == 4
+
+
+def test_build_detection_runtime_optimizations_keeps_cpu_path_simple() -> None:
+    runtime = _build_detection_runtime_optimizations(device="cpu", num_workers=0)
+
+    assert runtime.pin_memory is False
+    assert runtime.non_blocking is False
+    assert runtime.use_amp is False
+    assert runtime.loader_kwargs == {"pin_memory": False}
+
+
+def test_train_dbnet_detector_resumes_from_checkpoint(tmp_path: Path) -> None:
+    config = _build_smoke_detection_config(tmp_path, experiment_name="det_resume_ckpt")
+    paths = ProjectPaths.from_root(tmp_path)
+
+    first = train_dbnet_detector(config, paths=paths, run_id="resume-run")
+    resumed = train_dbnet_detector(
+        replace(config, epochs=2),
+        paths=paths,
+        resume_from=first.checkpoint_path,
+    )
+
+    history_lines = resumed.history_path.read_text(encoding="utf-8").splitlines()
+    assert resumed.context.run_dir == first.context.run_dir
+    assert len(history_lines) == 2
+    assert json.loads(history_lines[-1])["epoch"] == 2
+
+
+def test_train_dbnet_detector_resumes_from_run_dir(tmp_path: Path) -> None:
+    config = _build_smoke_detection_config(tmp_path, experiment_name="det_resume_run_dir")
+    paths = ProjectPaths.from_root(tmp_path)
+
+    first = train_dbnet_detector(config, paths=paths, run_id="resume-run-dir")
+    resumed = train_dbnet_detector(
+        replace(config, epochs=2),
+        paths=paths,
+        resume_from=first.context.run_dir,
+    )
+
+    history_lines = resumed.history_path.read_text(encoding="utf-8").splitlines()
+    assert resumed.context.run_dir == first.context.run_dir
+    assert len(history_lines) == 2
+    assert json.loads(history_lines[-1])["epoch"] == 2
+
+
 def _write_box_image(path: Path) -> None:
     image = Image.new("RGB", (32, 32), color="white")
     draw = ImageDraw.Draw(image)
     draw.rectangle((4, 4, 24, 24), outline="black", width=2)
     image.save(path)
+
+
+def _build_smoke_detection_config(tmp_path: Path, *, experiment_name: str) -> DetectionRunConfig:
+    (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
+    dataset_dir = tmp_path / "data" / "raw" / "rects"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+
+    image_a = tmp_path / f"{experiment_name}_a.png"
+    image_b = tmp_path / f"{experiment_name}_b.png"
+    _write_box_image(image_a)
+    _write_box_image(image_b)
+
+    train_manifest = tmp_path / "data" / "processed" / "detection_splits" / "train.jsonl"
+    val_manifest = tmp_path / "data" / "processed" / "detection_splits" / "val.jsonl"
+    train_manifest.parent.mkdir(parents=True, exist_ok=True)
+    payloads = [
+        {
+            "dataset": "rects",
+            "image_path": str(image_a),
+            "label_path": str(image_a.with_suffix(".json")),
+            "instances": [{"points": [4, 4, 24, 4, 24, 24, 4, 24], "text": "营业", "ignore": 0}],
+        },
+        {
+            "dataset": "shopsign",
+            "image_path": str(image_b),
+            "label_path": str(image_b.with_suffix(".txt")),
+            "instances": [{"points": [6, 6, 26, 6, 26, 26, 6, 26], "text": "时间", "ignore": 0}],
+        },
+    ]
+    content = "\n".join(json.dumps(item, ensure_ascii=False) for item in payloads) + "\n"
+    train_manifest.write_text(content, encoding="utf-8")
+    val_manifest.write_text(content, encoding="utf-8")
+
+    config_path = tmp_path / "configs" / "detection" / f"{experiment_name}.yaml"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        "\n".join(
+            [
+                f"experiment_name: {experiment_name}",
+                "model_name: dbnet",
+                "dataset_dir: data/raw/rects",
+                "train_manifest: data/processed/detection_splits/train.jsonl",
+                "validation_manifest: data/processed/detection_splits/val.jsonl",
+                f"output_root: artifacts/detection/{experiment_name}",
+                "epochs: 1",
+                "batch_size: 2",
+                "learning_rate: 0.001",
+                "image_height: 32",
+                "image_width: 32",
+                "device: cpu",
+                "num_workers: 0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return load_detection_run_config(config_path)

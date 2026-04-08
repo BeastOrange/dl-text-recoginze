@@ -249,3 +249,171 @@ def test_export_onnx_command_writes_real_export_file(tmp_path: Path, monkeypatch
     assert exit_code == 0
     assert calls["checkpoint_path"] == checkpoint
     assert (tmp_path / "artifacts" / "exports" / "model.onnx").exists()
+
+
+def test_train_detector_passes_resume_from(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
+    dataset_dir = tmp_path / "data" / "raw" / "rects"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    train_manifest = tmp_path / "data" / "processed" / "detection_splits" / "train.jsonl"
+    val_manifest = tmp_path / "data" / "processed" / "detection_splits" / "val.jsonl"
+    train_manifest.parent.mkdir(parents=True, exist_ok=True)
+    train_manifest.write_text("{}\n", encoding="utf-8")
+    val_manifest.write_text("{}\n", encoding="utf-8")
+    config_dir = tmp_path / "configs" / "detection"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_path = config_dir / "det.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment_name: det_resume",
+                "model_name: dbnet",
+                "dataset_dir: data/raw/rects",
+                "train_manifest: data/processed/detection_splits/train.jsonl",
+                "validation_manifest: data/processed/detection_splits/val.jsonl",
+                "output_root: artifacts/detection/det_resume",
+                "epochs: 1",
+                "batch_size: 1",
+                "learning_rate: 0.001",
+                "image_height: 32",
+                "image_width: 32",
+                "device: cpu",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    resume_dir = tmp_path / "artifacts" / "detection" / "old-run"
+    resume_dir.mkdir(parents=True, exist_ok=True)
+    calls = {}
+
+    class _Result:
+        def __init__(self) -> None:
+            self.context = type(
+                "Context",
+                (),
+                {"run_dir": tmp_path / "artifacts" / "detection" / "new"},
+            )()
+            self.checkpoint_path = self.context.run_dir / "last.pt"
+            self.best_checkpoint_path = self.context.run_dir / "best.pt"
+            self.history_path = self.context.run_dir / "training_history.jsonl"
+            self.history_markdown_path = self.context.run_dir / "training_history.md"
+            self.history_plot_path = self.context.run_dir / "training_curve.png"
+            self.summary_path = self.context.run_dir / "training_summary.json"
+            self.report_paths = {"markdown": self.context.run_dir / "eval.md"}
+            self.context.run_dir.mkdir(parents=True, exist_ok=True)
+            for path in (
+                self.checkpoint_path,
+                self.best_checkpoint_path,
+                self.history_path,
+                self.history_markdown_path,
+                self.history_plot_path,
+                self.summary_path,
+                self.report_paths["markdown"],
+            ):
+                path.write_text("x", encoding="utf-8")
+
+    def fake_train_dbnet_detector(config, *, paths, run_id, resume_from=None):  # noqa: ANN001
+        calls["resume_from"] = resume_from
+        return _Result()
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("dltr.commands.train_dbnet_detector", fake_train_dbnet_detector)
+
+    exit_code = main(
+        [
+            "train",
+            "detector",
+            "--config",
+            str(config_path),
+            "--run-id",
+            "run-1",
+            "--resume-from",
+            str(resume_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls["resume_from"] == resume_dir
+
+
+def test_train_recognizer_passes_resume_from(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
+    manifest = tmp_path / "data" / "processed" / "recognition_splits" / "train.jsonl"
+    val_manifest = tmp_path / "data" / "processed" / "recognition_splits" / "val.jsonl"
+    charset = tmp_path / "data" / "processed" / "charset.txt"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text("{}\n", encoding="utf-8")
+    val_manifest.write_text("{}\n", encoding="utf-8")
+    charset.write_text("测\n试\n", encoding="utf-8")
+    config_dir = tmp_path / "configs" / "recognition"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_path = config_dir / "rec.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "experiment_name: rec_resume",
+                "model_name: transformer",
+                "dataset_manifest: data/processed/recognition_splits/train.jsonl",
+                "validation_manifest: data/processed/recognition_splits/val.jsonl",
+                "charset_file: data/processed/charset.txt",
+                "output_dir: artifacts/checkpoints/recognition/rec_resume",
+                "epochs: 1",
+                "batch_size: 1",
+                "image_height: 32",
+                "image_width: 128",
+                "learning_rate: 0.001",
+                "device: cpu",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    resume_file = tmp_path / "artifacts" / "checkpoints" / "recognition" / "old" / "last.pt"
+    resume_file.parent.mkdir(parents=True, exist_ok=True)
+    resume_file.write_bytes(b"pt")
+    calls = {}
+
+    class _Result:
+        def __init__(self) -> None:
+            self.run_dir = tmp_path / "artifacts" / "checkpoints" / "recognition" / "new"
+            self.checkpoint_path = self.run_dir / "last.pt"
+            self.best_checkpoint_path = self.run_dir / "best.pt"
+            self.history_path = self.run_dir / "training_history.jsonl"
+            self.history_markdown_path = self.run_dir / "training_history.md"
+            self.history_plot_path = self.run_dir / "training_curve.png"
+            self.summary_path = self.run_dir / "training_summary.json"
+            self.report_path = self.run_dir / "report.md"
+            self.metrics = type("Metrics", (), {"samples": 1})()
+            self.run_dir.mkdir(parents=True, exist_ok=True)
+            self.checkpoint_path.write_text("x", encoding="utf-8")
+            self.best_checkpoint_path.write_text("x", encoding="utf-8")
+            self.history_path.write_text("x", encoding="utf-8")
+            self.history_markdown_path.write_text("x", encoding="utf-8")
+            self.history_plot_path.write_text("x", encoding="utf-8")
+            self.summary_path.write_text("x", encoding="utf-8")
+            self.report_path.write_text("x", encoding="utf-8")
+
+    def fake_train_transformer_recognizer(config, *, paths, run_id, resume_from=None):  # noqa: ANN001
+        calls["resume_from"] = resume_from
+        return _Result()
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "dltr.commands.train_transformer_recognizer",
+        fake_train_transformer_recognizer,
+    )
+
+    exit_code = main(
+        [
+            "train",
+            "recognizer",
+            "--config",
+            str(config_path),
+            "--run-id",
+            "run-1",
+            "--resume-from",
+            str(resume_file),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls["resume_from"] == resume_file
