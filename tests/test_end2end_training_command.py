@@ -2,6 +2,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+import pytest
 from PIL import Image, ImageDraw
 
 from dltr.cli import main
@@ -9,6 +10,8 @@ from dltr.models.detection.scaffold import load_detection_run_config
 from dltr.models.end2end_system import train_end2end_multitask_system
 from dltr.models.recognition.config import load_recognition_config
 from dltr.project import ProjectPaths
+
+torch = pytest.importorskip("torch")
 
 
 def test_train_end2end_command_writes_summary(tmp_path: Path, monkeypatch) -> None:
