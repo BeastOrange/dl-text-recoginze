@@ -12,6 +12,8 @@ class DatasetSpec:
     name: str
     relative_path: Path
     required: bool = False
+    manifest_format: str = "sidecar"
+    annotation_path: Path | None = None
     image_extensions: set[str] = field(default_factory=lambda: set(DEFAULT_IMAGE_EXTENSIONS))
     label_extensions: set[str] = field(default_factory=lambda: set(DEFAULT_LABEL_EXTENSIONS))
 

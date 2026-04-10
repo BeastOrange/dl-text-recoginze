@@ -13,6 +13,8 @@ def build_recognition_manifest(
     output_path: Path,
     image_extensions: set[str],
     label_extensions: set[str],
+    manifest_format: str = "sidecar",
+    annotation_path: Path | None = None,
 ) -> ManifestBuildResult:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -29,40 +31,43 @@ def build_recognition_manifest(
     source_root = _resolve_manifest_source_root(dataset_root)
     image_exts = {ext.lower() for ext in image_extensions}
     label_exts = {ext.lower() for ext in label_extensions}
-    images = [
-        path
-        for path in _walk_files(source_root)
-        if path.suffix.lower() in image_exts
-    ]
+    resolved_format = manifest_format.strip().lower() or "sidecar"
 
-    emitted_rows = 0
-    skipped_without_label = 0
+    if resolved_format == "mjsynth":
+        scanned_images, rows, skipped_without_label = _build_mjsynth_rows(
+            dataset_name=dataset_name,
+            dataset_root=source_root,
+            image_extensions=image_exts,
+        )
+    elif resolved_format == "pairs":
+        scanned_images, rows, skipped_without_label = _build_pairs_rows(
+            dataset_name=dataset_name,
+            dataset_root=source_root,
+            annotation_path=annotation_path,
+        )
+    elif resolved_format == "icdar_gt":
+        scanned_images, rows, skipped_without_label = _build_icdar_gt_rows(
+            dataset_name=dataset_name,
+            dataset_root=source_root,
+            annotation_path=annotation_path,
+        )
+    else:
+        scanned_images, rows, skipped_without_label = _build_sidecar_rows(
+            dataset_name=dataset_name,
+            dataset_root=source_root,
+            image_extensions=image_exts,
+            label_extensions=label_exts,
+        )
 
-    with output_path.open("w", encoding="utf-8") as handle:
-        for image_path in sorted(images):
-            label_path = _find_label_path(
-                dataset_root=source_root,
-                image_path=image_path,
-                label_extensions=label_exts,
-            )
-            if label_path is None:
-                skipped_without_label += 1
-                continue
-            text = _extract_text(label_path)
-            payload = {
-                "dataset": dataset_name,
-                "image_path": image_path.as_posix(),
-                "label_path": label_path.as_posix(),
-                "text": text,
-            }
-            handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
-            emitted_rows += 1
-
+    output_path.write_text(
+        "\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + ("\n" if rows else ""),
+        encoding="utf-8",
+    )
     return ManifestBuildResult(
         dataset_name=dataset_name,
         output_path=output_path,
-        scanned_images=len(images),
-        emitted_rows=emitted_rows,
+        scanned_images=scanned_images,
+        emitted_rows=len(rows),
         skipped_without_label=skipped_without_label,
     )
 
@@ -72,6 +77,132 @@ def _resolve_manifest_source_root(dataset_root: Path) -> Path:
     if rects_train_root.exists() and rects_train_root.is_dir():
         return rects_train_root
     return dataset_root
+
+
+def _build_sidecar_rows(
+    *,
+    dataset_name: str,
+    dataset_root: Path,
+    image_extensions: set[str],
+    label_extensions: set[str],
+) -> tuple[int, list[dict[str, str]], int]:
+    images = [path for path in _walk_files(dataset_root) if path.suffix.lower() in image_extensions]
+    rows: list[dict[str, str]] = []
+    skipped_without_label = 0
+    for image_path in sorted(images):
+        label_path = _find_label_path(
+            dataset_root=dataset_root,
+            image_path=image_path,
+            label_extensions=label_extensions,
+        )
+        if label_path is None:
+            skipped_without_label += 1
+            continue
+        rows.append(
+            {
+                "dataset": dataset_name,
+                "image_path": image_path.as_posix(),
+                "label_path": label_path.as_posix(),
+                "text": _extract_text(label_path),
+            }
+        )
+    return len(images), rows, skipped_without_label
+
+
+def _build_mjsynth_rows(
+    *,
+    dataset_name: str,
+    dataset_root: Path,
+    image_extensions: set[str],
+) -> tuple[int, list[dict[str, str]], int]:
+    images = [path for path in _walk_files(dataset_root) if path.suffix.lower() in image_extensions]
+    rows: list[dict[str, str]] = []
+    skipped_without_label = 0
+    for image_path in sorted(images):
+        text = _extract_mjsynth_text(image_path)
+        if not text:
+            skipped_without_label += 1
+            continue
+        rows.append(
+            {
+                "dataset": dataset_name,
+                "image_path": image_path.as_posix(),
+                "label_path": "",
+                "text": text,
+            }
+        )
+    return len(images), rows, skipped_without_label
+
+
+def _build_pairs_rows(
+    *,
+    dataset_name: str,
+    dataset_root: Path,
+    annotation_path: Path | None,
+) -> tuple[int, list[dict[str, str]], int]:
+    if annotation_path is None or not annotation_path.exists():
+        return 0, [], 0
+    rows: list[dict[str, str]] = []
+    skipped_without_label = 0
+    scanned_images = 0
+    for line in annotation_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        scanned_images += 1
+        relative_path, text = line.split("\t", maxsplit=1)
+        image_path = dataset_root / relative_path.strip()
+        if not image_path.exists():
+            skipped_without_label += 1
+            continue
+        rows.append(
+            {
+                "dataset": dataset_name,
+                "image_path": image_path.as_posix(),
+                "label_path": annotation_path.as_posix(),
+                "text": text.strip(),
+            }
+        )
+    return scanned_images, rows, skipped_without_label
+
+
+def _build_icdar_gt_rows(
+    *,
+    dataset_name: str,
+    dataset_root: Path,
+    annotation_path: Path | None,
+) -> tuple[int, list[dict[str, str]], int]:
+    if annotation_path is None or not annotation_path.exists():
+        return 0, [], 0
+    rows: list[dict[str, str]] = []
+    skipped_without_label = 0
+    scanned_images = 0
+    for line in annotation_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        scanned_images += 1
+        image_name, text = line.split(",", maxsplit=1)
+        image_path = next(dataset_root.rglob(image_name.strip()), None)
+        if image_path is None or not image_path.exists():
+            skipped_without_label += 1
+            continue
+        rows.append(
+            {
+                "dataset": dataset_name,
+                "image_path": image_path.as_posix(),
+                "label_path": annotation_path.as_posix(),
+                "text": text.strip().strip('"'),
+            }
+        )
+    return scanned_images, rows, skipped_without_label
+
+
+def _extract_mjsynth_text(image_path: Path) -> str:
+    parts = image_path.stem.split("_")
+    if len(parts) < 3:
+        return ""
+    return parts[1].strip()
+
+
 def _find_label_path(
     dataset_root: Path,
     image_path: Path,
@@ -166,7 +297,7 @@ def _extract_text_from_json(label_path: Path) -> str:
         return str(value).strip() if value is not None else ""
     if isinstance(payload, list):
         texts = [str(item.get("text", "")).strip() for item in payload if isinstance(item, dict)]
-        return " ".join([token for token in texts if token]).strip()
+        return " ".join(token for token in texts if token).strip()
     return ""
 
 
@@ -195,10 +326,7 @@ def _rects_candidate_label_dirs(dataset_root: Path, image_path: Path) -> list[Pa
     if image_path.parent.name != "img":
         return []
 
-    base_dirs = [
-        image_path.parent.parent,
-        dataset_root,
-    ]
+    base_dirs = [image_path.parent.parent, dataset_root]
     candidates: list[Path] = []
     seen: set[Path] = set()
     for base_dir in base_dirs:

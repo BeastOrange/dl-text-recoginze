@@ -43,7 +43,7 @@ from dltr.models.recognition.config import (
 )
 from dltr.models.recognition.evaluation import (
     RecognitionMetrics,
-    generate_recognition_evaluation_report,
+    write_recognition_evaluation_bundle,
 )
 from dltr.models.recognition.refinement import (
     QualitySignals,
@@ -71,6 +71,7 @@ from dltr.post_ocr import (
 from dltr.project import ProjectPaths, ensure_runtime_dirs
 from dltr.terminal import print_artifact_summary, print_stage_header
 from dltr.visualization.ablation_reports import build_ablation_overview
+from dltr.visualization.english_benchmark_reports import build_english_benchmark_summary
 from dltr.visualization.hardcase_reports import build_hardcase_overview
 from dltr.visualization.project_summary import build_project_training_summary
 from dltr.visualization.report_index import build_ablation_template, build_training_report_index
@@ -124,6 +125,12 @@ def cmd_data_build_rec_lmdb(args: argparse.Namespace) -> int:
         output_path=output_path,
         image_extensions=spec.image_extensions,
         label_extensions=spec.label_extensions,
+        manifest_format=spec.manifest_format,
+        annotation_path=(
+            (paths.root / spec.annotation_path).resolve()
+            if spec.annotation_path is not None
+            else None
+        ),
     )
     print("Manifest scaffold completed.")
     print("Note: current scaffold emits JSONL manifest, not LMDB.")
@@ -159,6 +166,12 @@ def cmd_data_prepare_recognition(args: argparse.Namespace) -> int:
             output_path=manifest_path,
             image_extensions=spec.image_extensions,
             label_extensions=spec.label_extensions,
+            manifest_format=spec.manifest_format,
+            annotation_path=(
+                (paths.root / spec.annotation_path).resolve()
+                if spec.annotation_path is not None
+                else None
+            ),
         )
         manifest_paths.append(manifest_path)
 
@@ -652,6 +665,19 @@ def cmd_report_build_index(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_report_summarize_english_benchmark(args: argparse.Namespace) -> int:
+    outputs = build_english_benchmark_summary(
+        benchmark_json_paths=[_resolve_existing_path_arg(path) for path in args.benchmark_jsons],
+        output_dir=_resolve_output_path(
+            args.output_dir,
+            ProjectPaths.from_root().reports / "english",
+        ),
+    )
+    print(f"json={outputs['json']}")
+    print(f"markdown={outputs['markdown']}")
+    return 0
+
+
 def cmd_report_build_ablation_template(args: argparse.Namespace) -> int:
     output_path = build_ablation_template(
         output_dir=_resolve_output_path(
@@ -807,14 +833,17 @@ def cmd_evaluate_recognizer(args: argparse.Namespace) -> int:
         latency_ms=args.latency_ms,
     )
     output_dir = _resolve_output_path(args.output_dir, ProjectPaths.from_root().reports / "eval")
-    report_path = generate_recognition_evaluation_report(
+    outputs = write_recognition_evaluation_bundle(
         run_name=args.run_name,
         model_name=args.model_name,
         metrics=metrics,
         output_dir=output_dir,
         notes=args.notes,
+        benchmark_name=args.benchmark_name,
+        benchmark_category=args.benchmark_category,
     )
-    print(f"Recognition evaluation report written to {report_path}")
+    print(f"Recognition evaluation report written to {outputs['markdown']}")
+    print(f"json={outputs['json']}")
     return 0
 
 

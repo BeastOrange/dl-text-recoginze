@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -69,3 +70,48 @@ def generate_recognition_evaluation_report(
 
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return report_path
+
+
+def write_recognition_evaluation_bundle(
+    *,
+    run_name: str,
+    model_name: str,
+    metrics: RecognitionMetrics,
+    output_dir: str | Path,
+    notes: str | None = None,
+    benchmark_name: str | None = None,
+    benchmark_category: str | None = None,
+) -> dict[str, Path]:
+    report_path = generate_recognition_evaluation_report(
+        run_name=run_name,
+        model_name=model_name,
+        metrics=metrics,
+        output_dir=output_dir,
+        notes=notes,
+    )
+    target_dir = Path(output_dir)
+    json_path = target_dir / f"{run_name}_recognition_eval.json"
+    json_path.write_text(
+        json.dumps(
+            {
+                "run_name": run_name,
+                "model_name": model_name,
+                "benchmark_name": (benchmark_name or "").strip(),
+                "benchmark_category": (benchmark_category or "").strip().lower(),
+                "notes": notes.strip() if notes else "",
+                "generated_at": datetime.now(UTC).isoformat(),
+                "metrics": {
+                    "samples": metrics.samples,
+                    "word_accuracy": metrics.word_accuracy,
+                    "cer": metrics.cer,
+                    "ned": metrics.ned,
+                    "mean_edit_distance": metrics.mean_edit_distance,
+                    "latency_ms": metrics.latency_ms,
+                },
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return {"markdown": report_path, "json": json_path}

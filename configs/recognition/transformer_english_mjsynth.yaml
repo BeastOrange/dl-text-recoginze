@@ -1,0 +1,26 @@
+experiment_name: transformer_english_mjsynth
+model_name: transformer
+dataset_manifest: data/processed/english_recognition_splits/train.jsonl
+validation_manifest: data/processed/english_recognition_splits/val.jsonl
+charset_file: data/processed/charset_en_benchmark.txt
+output_dir: artifacts/checkpoints/recognition/transformer_english_mjsynth
+epochs: 60
+batch_size: 192
+image_height: 48
+image_width: 320
+learning_rate: 0.0007
+device: auto
+num_workers: 8
+preprocess:
+  preserve_aspect_ratio: true
+  rotate_vertical_text: false
+  vertical_aspect_threshold: 1.2
+  padding_value: 255
+second_pass:
+  enabled: false
+  confidence_threshold: 0.78
+  max_blur_score: 0.45
+  min_contrast_score: 0.35
+  min_text_length: 2
+  min_aspect_ratio: 0.2
+  max_aspect_ratio: 20.0

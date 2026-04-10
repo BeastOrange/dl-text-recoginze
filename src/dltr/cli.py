@@ -21,6 +21,7 @@ from dltr.commands import (
     cmd_report_build_all,
     cmd_report_build_hardcase,
     cmd_report_build_index,
+    cmd_report_summarize_english_benchmark,
     cmd_report_summarize_project,
     cmd_report_summarize_training,
     cmd_sync_linux,
@@ -138,6 +139,8 @@ def build_parser() -> argparse.ArgumentParser:
     eval_recognizer.add_argument("--mean-edit-distance", required=True, type=float)
     eval_recognizer.add_argument("--latency-ms", type=float)
     eval_recognizer.add_argument("--notes")
+    eval_recognizer.add_argument("--benchmark-name")
+    eval_recognizer.add_argument("--benchmark-category")
     eval_recognizer.add_argument("--output-dir")
     eval_recognizer.set_defaults(handler=cmd_evaluate_recognizer)
     eval_end2end = eval_sub.add_parser("end2end")
@@ -208,6 +211,10 @@ def build_parser() -> argparse.ArgumentParser:
     report_project.add_argument("--recognition-summary-json", required=True)
     report_project.add_argument("--output-dir")
     report_project.set_defaults(handler=cmd_report_summarize_project)
+    report_english = report_sub.add_parser("summarize-english-benchmark")
+    report_english.add_argument("--benchmark-jsons", nargs="+", required=True)
+    report_english.add_argument("--output-dir")
+    report_english.set_defaults(handler=cmd_report_summarize_english_benchmark)
     report_index = report_sub.add_parser("build-index")
     report_index.add_argument("--train-reports-dir", required=True)
     report_index.add_argument("--output-dir")

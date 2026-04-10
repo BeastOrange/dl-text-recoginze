@@ -1,0 +1,35 @@
+datasets:
+  - name: mjsynth
+    relative_path: data/raw/mjsynth
+    required: false
+    manifest_format: mjsynth
+    image_extensions: [".jpg", ".jpeg", ".png"]
+    label_extensions: []
+  - name: iiit5k
+    relative_path: data/raw/iiit5k
+    required: false
+    manifest_format: pairs
+    annotation_path: data/raw/iiit5k/annotations/test.tsv
+    image_extensions: [".jpg", ".jpeg", ".png"]
+    label_extensions: []
+  - name: svt
+    relative_path: data/raw/svt
+    required: false
+    manifest_format: pairs
+    annotation_path: data/raw/svt/annotations/test.tsv
+    image_extensions: [".jpg", ".jpeg", ".png"]
+    label_extensions: []
+  - name: icdar13
+    relative_path: data/raw/icdar13
+    required: false
+    manifest_format: icdar_gt
+    annotation_path: data/raw/icdar13/Challenge2_Test_Task3_GT.txt
+    image_extensions: [".jpg", ".jpeg", ".png"]
+    label_extensions: []
+  - name: icdar15
+    relative_path: data/raw/icdar15
+    required: false
+    manifest_format: icdar_gt
+    annotation_path: data/raw/icdar15/Challenge4_Test_Task3_GT.txt
+    image_extensions: [".jpg", ".jpeg", ".png"]
+    label_extensions: []

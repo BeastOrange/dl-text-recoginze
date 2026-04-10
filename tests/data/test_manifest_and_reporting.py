@@ -140,3 +140,81 @@ def test_build_recognition_manifest_supports_shopsign_images_layout(tmp_path: Pa
     assert result.emitted_rows == 1
     payload = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
     assert payload["text"] == "SHCER 茜施尔"
+
+
+def test_build_recognition_manifest_supports_mjsynth_filename_labels(tmp_path: Path) -> None:
+    dataset_root = tmp_path / "mjsynth"
+    image_path = (
+        dataset_root
+        / "mnt"
+        / "ramdisk"
+        / "max"
+        / "90kDICT32px"
+        / "hello"
+        / "12_Street_34.jpg"
+    )
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    image_path.write_bytes(b"img")
+
+    output_path = tmp_path / "mjsynth_manifest.jsonl"
+    result = build_recognition_manifest(
+        dataset_name="mjsynth",
+        dataset_root=dataset_root,
+        output_path=output_path,
+        image_extensions={".jpg"},
+        label_extensions=set(),
+        manifest_format="mjsynth",
+    )
+
+    assert result.emitted_rows == 1
+    payload = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert payload["text"] == "Street"
+
+
+def test_build_recognition_manifest_supports_pairs_annotations(tmp_path: Path) -> None:
+    dataset_root = tmp_path / "iiit5k"
+    image_path = dataset_root / "test" / "word_001.png"
+    annotation_path = dataset_root / "annotations" / "test.tsv"
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    annotation_path.parent.mkdir(parents=True, exist_ok=True)
+    image_path.write_bytes(b"img")
+    annotation_path.write_text("test/word_001.png\tHELLO\n", encoding="utf-8")
+
+    output_path = tmp_path / "iiit5k_manifest.jsonl"
+    result = build_recognition_manifest(
+        dataset_name="iiit5k",
+        dataset_root=dataset_root,
+        output_path=output_path,
+        image_extensions={".png"},
+        label_extensions=set(),
+        manifest_format="pairs",
+        annotation_path=annotation_path,
+    )
+
+    assert result.emitted_rows == 1
+    payload = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert payload["text"] == "HELLO"
+
+
+def test_build_recognition_manifest_supports_icdar_gt_annotations(tmp_path: Path) -> None:
+    dataset_root = tmp_path / "icdar13"
+    image_path = dataset_root / "Challenge2_Test_Task3_Images" / "word_1.png"
+    annotation_path = dataset_root / "Challenge2_Test_Task3_GT.txt"
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    image_path.write_bytes(b"img")
+    annotation_path.write_text('word_1.png, "OpenAI"\n', encoding="utf-8")
+
+    output_path = tmp_path / "icdar13_manifest.jsonl"
+    result = build_recognition_manifest(
+        dataset_name="icdar13",
+        dataset_root=dataset_root,
+        output_path=output_path,
+        image_extensions={".png"},
+        label_extensions=set(),
+        manifest_format="icdar_gt",
+        annotation_path=annotation_path,
+    )
+
+    assert result.emitted_rows == 1
+    payload = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert payload["text"] == "OpenAI"

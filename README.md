@@ -137,6 +137,37 @@ uv run python scripts/run_dltr.py evaluate end2end \
   --output-dir reports/eval
 ```
 
+## 英文 Benchmark 快速路径
+
+```bash
+# 1) 准备英文识别数据（MJSynth + benchmark manifests）
+uv run python scripts/run_dltr.py data prepare-recognition \
+  --config configs/data/datasets.english.example.yaml \
+  --datasets mjsynth
+
+# 2) 训练英文识别模型
+uv run python scripts/run_dltr.py train recognizer \
+  --config configs/recognition/transformer_english_mjsynth.yaml
+
+# 3) 写入单个 benchmark 评测结果（会同时生成 md + json）
+uv run python scripts/run_dltr.py evaluate recognizer \
+  --run-name transformer_iiit5k \
+  --model-name transformer \
+  --samples 3000 \
+  --word-accuracy 0.91 \
+  --cer 0.07 \
+  --ned 0.08 \
+  --mean-edit-distance 0.18 \
+  --benchmark-name iiit5k \
+  --benchmark-category main \
+  --output-dir reports/eval
+
+# 4) 汇总主展示 / hard benchmark 指标
+uv run python scripts/run_dltr.py report summarize-english-benchmark \
+  --benchmark-jsons reports/eval/*_recognition_eval.json \
+  --output-dir reports/english
+```
+
 ## 测试与代码检查
 
 ```bash

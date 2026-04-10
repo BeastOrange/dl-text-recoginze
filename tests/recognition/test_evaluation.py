@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -5,6 +6,7 @@ import pytest
 from dltr.models.recognition.evaluation import (
     RecognitionMetrics,
     generate_recognition_evaluation_report,
+    write_recognition_evaluation_bundle,
 )
 
 
@@ -41,3 +43,31 @@ def test_metrics_validation_rejects_invalid_cer() -> None:
     )
     with pytest.raises(ValueError, match="cer"):
         metrics.validate()
+
+
+def test_write_recognition_evaluation_bundle_writes_json_with_benchmark_metadata(
+    tmp_path: Path,
+) -> None:
+    metrics = RecognitionMetrics(
+        samples=3000,
+        word_accuracy=0.91,
+        cer=0.07,
+        ned=0.08,
+        mean_edit_distance=0.18,
+    )
+
+    outputs = write_recognition_evaluation_bundle(
+        run_name="transformer_iiit5k",
+        model_name="transformer",
+        metrics=metrics,
+        output_dir=tmp_path,
+        benchmark_name="iiit5k",
+        benchmark_category="main",
+        notes="English benchmark evaluation.",
+    )
+
+    payload = json.loads(outputs["json"].read_text(encoding="utf-8"))
+    assert outputs["markdown"].exists()
+    assert payload["benchmark_name"] == "iiit5k"
+    assert payload["benchmark_category"] == "main"
+    assert payload["metrics"]["word_accuracy"] == pytest.approx(0.91)
