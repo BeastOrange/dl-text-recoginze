@@ -19,8 +19,8 @@ class RecognitionMetrics:
             raise ValueError("samples must be > 0")
         if not 0.0 <= self.word_accuracy <= 1.0:
             raise ValueError("word_accuracy must be in [0, 1]")
-        if not 0.0 <= self.cer <= 1.0:
-            raise ValueError("cer must be in [0, 1]")
+        if self.cer < 0:
+            raise ValueError("cer must be >= 0")
         if not 0.0 <= self.ned <= 1.0:
             raise ValueError("ned must be in [0, 1]")
         if self.mean_edit_distance < 0:

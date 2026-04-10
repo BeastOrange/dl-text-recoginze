@@ -6,5 +6,5 @@
 
 | Task | Primary Metric |
 |---|---:|
-| detection | 0.000000 |
-| recognition | 0.000000 |
+| detection | 0.913827 |
+| recognition | 0.496980 |

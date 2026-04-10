@@ -24,3 +24,4 @@ def test_build_ablation_overview_writes_outputs(tmp_path: Path) -> None:
 
     assert outputs["markdown"].exists()
     assert outputs["png"].exists()
+    assert outputs["png"].stat().st_size > 0

@@ -5,6 +5,8 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+from dltr.visualization.plot_style import resolve_upper_bound, style_axis
+
 
 def build_ablation_overview(
     *,
@@ -23,12 +25,35 @@ def build_ablation_overview(
         "detection": detection[0]["primary_metric"] if detection else 0.0,
         "recognition": recognition[0]["primary_metric"] if recognition else 0.0,
     }
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.bar(list(bars.keys()), list(bars.values()))
+    labels = list(bars.keys())
+    values = list(bars.values())
+    fig, ax = plt.subplots(figsize=(8.6, 4.8))
+    style_axis(ax)
+    rendered = ax.bar(
+        labels,
+        values,
+        color=["#2F6CAD", "#4A8F6D"],
+        edgecolor="#2E3A46",
+        linewidth=0.6,
+        width=0.62,
+    )
+    upper_bound = resolve_upper_bound(max(values))
+    ax.set_ylim(0.0, upper_bound)
+    for bar, value in zip(rendered, values, strict=True):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            value + upper_bound * 0.02,
+            f"{value:.3f}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            color="#2E3A46",
+        )
     ax.set_title("OCR Mainline Primary Metric Overview")
     ax.set_ylabel("Primary Metric")
+    ax.set_xlabel("Task")
     fig.tight_layout()
-    fig.savefig(png_path, dpi=160)
+    fig.savefig(png_path, dpi=180)
     plt.close(fig)
 
     markdown_path.write_text(

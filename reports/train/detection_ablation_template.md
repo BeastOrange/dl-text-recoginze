@@ -4,8 +4,9 @@
 
 | Experiment | Hypothesis | Expected Impact | Actual Result |
 |---|---|---|---|
-| taskbook-mainline |  |  |  |
 | report-smoke |  |  |  |
+| taskbook-mainline |  |  |  |
+| det-tonight-4090 |  |  |  |
 
 ## Notes
 

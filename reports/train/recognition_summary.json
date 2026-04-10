@@ -1,15 +1,71 @@
 [
   {
-    "run_name": "taskbook-mainline",
-    "run_dir": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/artifacts/checkpoints/recognition/transformer_detector_crop_quick_multitask/taskbook-mainline",
-    "primary_metric": 0.0,
+    "run_name": "recdet-20260406-201309",
+    "run_dir": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/transformer_detector_crop_4090/recdet-20260406-201309",
+    "primary_metric": 0.49697968149368477,
     "metrics": {
-      "word_accuracy": 0.0,
-      "cer": 1.0,
-      "ned": 1.0,
-      "mean_edit_distance": 4.109375,
-      "latency_ms": 1.206555343742366
+      "samples": 10926,
+      "word_accuracy": 0.49697968149368477,
+      "cer": 0.2649207598066764,
+      "ned": 0.30932317352693756,
+      "mean_edit_distance": 1.0786198059674172,
+      "latency_ms": 0.24578718728696644
     },
-    "best_checkpoint_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/artifacts/end2end/taskbook-mainline/best.pt"
+    "best_checkpoint_path": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/transformer_detector_crop_4090/recdet-20260406-201309/best.pt"
+  },
+  {
+    "run_name": "rec4090-20260406-153844",
+    "run_dir": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/transformer_baseline_4090/rec4090-20260406-153844",
+    "primary_metric": 0.49469156141314297,
+    "metrics": {
+      "samples": 10926,
+      "word_accuracy": 0.49469156141314297,
+      "cer": 0.2680903675396201,
+      "ned": 0.3112154675541097,
+      "mean_edit_distance": 1.0915248032216731,
+      "latency_ms": 0.25086187330162746
+    },
+    "best_checkpoint_path": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/transformer_baseline_4090/rec4090-20260406-153844/best.pt"
+  },
+  {
+    "run_name": "rec4090_20260405_224834",
+    "run_dir": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/crnn_baseline_4090/rec4090_20260405_224834",
+    "primary_metric": 0.4009701629141497,
+    "metrics": {
+      "samples": 10926,
+      "word_accuracy": 0.4009701629141497,
+      "cer": 0.32606496571878163,
+      "ned": 0.38445254479342533,
+      "mean_edit_distance": 1.3275672707303678,
+      "latency_ms": 0.29844262316869374
+    },
+    "best_checkpoint_path": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/crnn_baseline_4090/rec4090_20260405_224834/best.pt"
+  },
+  {
+    "run_name": "rec-tonight-4090",
+    "run_dir": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/transformer_detector_crop_tonight_4090/rec-tonight-4090",
+    "primary_metric": 0.23366282262493135,
+    "metrics": {
+      "samples": 10926,
+      "word_accuracy": 0.23366282262493135,
+      "cer": 0.522895357985838,
+      "ned": 0.5379536433356645,
+      "mean_edit_distance": 2.1289584477393375,
+      "latency_ms": 0.21270927264754555
+    },
+    "best_checkpoint_path": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/transformer_detector_crop_tonight_4090/rec-tonight-4090/best.pt"
+  },
+  {
+    "run_name": "4090-mainline",
+    "run_dir": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/transformer_detector_crop_cn_scene_4090_multitask/4090-mainline",
+    "primary_metric": 0.22524254072853744,
+    "metrics": {
+      "word_accuracy": 0.22524254072853744,
+      "cer": 0.5107564347532876,
+      "ned": 0.5218364308119348,
+      "mean_edit_distance": 2.079535053999634,
+      "latency_ms": 0.21833995022677513
+    },
+    "best_checkpoint_path": "/root/autodl-tmp/dl-text-recoginze/artifacts/end2end/4090-mainline/best.pt"
   }
 ]

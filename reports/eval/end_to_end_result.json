@@ -1,20 +1,55 @@
 {
-  "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/shopsign/images/image_15.jpg",
+  "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/shopsign/images/image_15.jpg",
   "lines": [
     {
       "line_id": "line-0",
       "polygon": [
-        81,
-        1348,
-        0,
-        1348,
-        0,
-        1116,
-        81,
-        1116
+        2328,
+        387,
+        2238,
+        46,
+        2383,
+        -22,
+        2473,
+        319
       ],
-      "text": "",
-      "recognition_confidence": 0.9395467638969421,
+      "text": "23",
+      "recognition_confidence": 0.9738084077835083,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "high_blur"
+      ],
+      "first_pass_text": "23",
+      "first_pass_confidence": 0.9738084077835083,
+      "second_pass_text": "2烤结",
+      "second_pass_confidence": 0.936320424079895,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": [
+          "23"
+        ]
+      }
+    },
+    {
+      "line_id": "line-1",
+      "polygon": [
+        1221,
+        326,
+        767,
+        326,
+        767,
+        0,
+        1221,
+        0
+      ],
+      "text": "瘦",
+      "recognition_confidence": 0.9956117868423462,
       "analysis_label": "other",
       "analysis_confidence": 0.55,
       "second_pass_applied": true,
@@ -22,10 +57,10 @@
         "short_text",
         "high_blur"
       ],
-      "first_pass_text": "",
-      "first_pass_confidence": 0.9389762878417969,
-      "second_pass_text": "",
-      "second_pass_confidence": 0.9395467638969421,
+      "first_pass_text": "#",
+      "first_pass_confidence": 0.9954609274864197,
+      "second_pass_text": "瘦",
+      "second_pass_confidence": 0.9956117868423462,
       "slots": {
         "phone": [],
         "price": [],
@@ -34,14 +69,535 @@
         "location_hint": [],
         "keywords": []
       }
+    },
+    {
+      "line_id": "line-2",
+      "polygon": [
+        1496,
+        837,
+        610,
+        686,
+        632,
+        455,
+        1519,
+        605
+      ],
+      "text": "满味闲母",
+      "recognition_confidence": 0.9154747128486633,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "high_blur"
+      ],
+      "first_pass_text": "黄精时智",
+      "first_pass_confidence": 0.9141861200332642,
+      "second_pass_text": "满味闲母",
+      "second_pass_confidence": 0.9154747128486633,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": [
+          "满味闲母"
+        ]
+      }
+    },
+    {
+      "line_id": "line-3",
+      "polygon": [
+        589,
+        657,
+        356,
+        635,
+        364,
+        481,
+        597,
+        504
+      ],
+      "text": "送",
+      "recognition_confidence": 0.9873566031455994,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "short_text",
+        "high_blur"
+      ],
+      "first_pass_text": "送",
+      "first_pass_confidence": 0.9873566031455994,
+      "second_pass_text": "粥",
+      "second_pass_confidence": 0.9783892631530762,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": []
+      }
+    },
+    {
+      "line_id": "line-4",
+      "polygon": [
+        2104,
+        864,
+        1532,
+        751,
+        1554,
+        553,
+        2125,
+        666
+      ],
+      "text": "巴牌旺",
+      "recognition_confidence": 0.9646627306938171,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "high_blur"
+      ],
+      "first_pass_text": "总牌留",
+      "first_pass_confidence": 0.8945755362510681,
+      "second_pass_text": "巴牌旺",
+      "second_pass_confidence": 0.9646627306938171,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": [
+          "巴牌旺"
+        ]
+      }
+    },
+    {
+      "line_id": "line-5",
+      "polygon": [
+        189,
+        1148,
+        -9,
+        1058,
+        117,
+        565,
+        315,
+        655
+      ],
+      "text": "我悦",
+      "recognition_confidence": 0.952370285987854,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "short_text",
+        "high_blur"
+      ],
+      "first_pass_text": "铭",
+      "first_pass_confidence": 0.9478000998497009,
+      "second_pass_text": "我悦",
+      "second_pass_confidence": 0.952370285987854,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": [
+          "我悦"
+        ]
+      }
+    },
+    {
+      "line_id": "line-6",
+      "polygon": [
+        2657,
+        1421,
+        2435,
+        1053,
+        2779,
+        684,
+        3001,
+        1052
+      ],
+      "text": "汤",
+      "recognition_confidence": 0.979395866394043,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "short_text",
+        "high_blur",
+        "low_contrast"
+      ],
+      "first_pass_text": "易",
+      "first_pass_confidence": 0.9770480990409851,
+      "second_pass_text": "汤",
+      "second_pass_confidence": 0.979395866394043,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": []
+      }
+    },
+    {
+      "line_id": "line-7",
+      "polygon": [
+        521,
+        1414,
+        515,
+        856,
+        1327,
+        839,
+        1334,
+        1398
+      ],
+      "text": "胖",
+      "recognition_confidence": 0.9772369265556335,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "short_text",
+        "high_blur"
+      ],
+      "first_pass_text": "2",
+      "first_pass_confidence": 0.9620082974433899,
+      "second_pass_text": "胖",
+      "second_pass_confidence": 0.9772369265556335,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": []
+      }
+    },
+    {
+      "line_id": "line-8",
+      "polygon": [
+        2302,
+        1372,
+        1354,
+        1372,
+        1354,
+        852,
+        2302,
+        852
+      ],
+      "text": "电",
+      "recognition_confidence": 0.9934818148612976,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "short_text",
+        "high_blur"
+      ],
+      "first_pass_text": "电",
+      "first_pass_confidence": 0.9934818148612976,
+      "second_pass_text": "电",
+      "second_pass_confidence": 0.986933708190918,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": []
+      }
+    },
+    {
+      "line_id": "line-9",
+      "polygon": [
+        90,
+        1727,
+        -35,
+        1546,
+        140,
+        1333,
+        264,
+        1514
+      ],
+      "text": "暖",
+      "recognition_confidence": 0.9998138546943665,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "short_text",
+        "high_blur"
+      ],
+      "first_pass_text": "暖",
+      "first_pass_confidence": 0.9953798651695251,
+      "second_pass_text": "暖",
+      "second_pass_confidence": 0.9998138546943665,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": []
+      }
+    },
+    {
+      "line_id": "line-10",
+      "polygon": [
+        581,
+        1612,
+        360,
+        1612,
+        360,
+        1426,
+        581,
+        1426
+      ],
+      "text": "电记",
+      "recognition_confidence": 0.9758641123771667,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "short_text",
+        "high_blur"
+      ],
+      "first_pass_text": "电",
+      "first_pass_confidence": 0.9646314978599548,
+      "second_pass_text": "电记",
+      "second_pass_confidence": 0.9758641123771667,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": [
+          "电记"
+        ]
+      }
+    },
+    {
+      "line_id": "line-11",
+      "polygon": [
+        1052,
+        1612,
+        680,
+        1612,
+        680,
+        1449,
+        1052,
+        1449
+      ],
+      "text": "烧",
+      "recognition_confidence": 0.9992182850837708,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "high_blur"
+      ],
+      "first_pass_text": "五炉",
+      "first_pass_confidence": 0.9723512530326843,
+      "second_pass_text": "烧",
+      "second_pass_confidence": 0.9992182850837708,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": []
+      }
+    },
+    {
+      "line_id": "line-12",
+      "polygon": [
+        2022,
+        1645,
+        1092,
+        1632,
+        1093,
+        1456,
+        2023,
+        1469
+      ],
+      "text": "犟鲜鲜醇汤带",
+      "recognition_confidence": 0.8718575835227966,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "high_blur"
+      ],
+      "first_pass_text": "鲜上好样带带",
+      "first_pass_confidence": 0.8637439012527466,
+      "second_pass_text": "犟鲜鲜醇汤带",
+      "second_pass_confidence": 0.8718575835227966,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": [
+          "犟鲜鲜醇汤带"
+        ]
+      }
+    },
+    {
+      "line_id": "line-13",
+      "polygon": [
+        2970,
+        2023,
+        2860,
+        2023,
+        2860,
+        1690,
+        2970,
+        1690
+      ],
+      "text": "#",
+      "recognition_confidence": 0.9837499856948853,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "short_text",
+        "high_blur"
+      ],
+      "first_pass_text": "#",
+      "first_pass_confidence": 0.9837499856948853,
+      "second_pass_text": "港",
+      "second_pass_confidence": 0.9689731597900391,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": []
+      }
+    },
+    {
+      "line_id": "line-14",
+      "polygon": [
+        538,
+        2206,
+        276,
+        2175,
+        289,
+        1981,
+        551,
+        2013
+      ],
+      "text": "早",
+      "recognition_confidence": 0.9985987544059753,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "short_text",
+        "high_blur",
+        "low_contrast"
+      ],
+      "first_pass_text": "#",
+      "first_pass_confidence": 0.9584118723869324,
+      "second_pass_text": "早",
+      "second_pass_confidence": 0.9985987544059753,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": []
+      }
+    },
+    {
+      "line_id": "line-15",
+      "polygon": [
+        222,
+        2365,
+        144,
+        2184,
+        238,
+        2112,
+        316,
+        2292
+      ],
+      "text": "#",
+      "recognition_confidence": 0.9961609244346619,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "short_text",
+        "high_blur",
+        "low_contrast"
+      ],
+      "first_pass_text": "#",
+      "first_pass_confidence": 0.9961609244346619,
+      "second_pass_text": "串",
+      "second_pass_confidence": 0.9688560366630554,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": []
+      }
+    },
+    {
+      "line_id": "line-16",
+      "polygon": [
+        53,
+        3214,
+        31,
+        3029,
+        288,
+        2977,
+        309,
+        3162
+      ],
+      "text": "青手",
+      "recognition_confidence": 0.994642436504364,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "second_pass_applied": true,
+      "second_pass_reasons": [
+        "short_text",
+        "high_blur"
+      ],
+      "first_pass_text": "#",
+      "first_pass_confidence": 0.993098258972168,
+      "second_pass_text": "青手",
+      "second_pass_confidence": 0.994642436504364,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": [
+          "青手"
+        ]
+      }
     }
   ],
   "runtime_metrics": {
-    "total_latency_ms": 1170.116083114408,
-    "detector_latency_ms": 199.51208296697587,
-    "recognizer_latency_ms": 956.1802499229088,
-    "second_pass_latency_ms": 6.727708037942648,
-    "post_ocr_latency_ms": 0.8057079976424575,
-    "fps": 0.8546160628254736
+    "total_latency_ms": 351.4141533523798,
+    "detector_latency_ms": 213.03127333521843,
+    "recognizer_latency_ms": 96.21293842792511,
+    "second_pass_latency_ms": 5.838444456458092,
+    "post_ocr_latency_ms": 2.5750603526830673,
+    "fps": 2.8456452037014346
   }
 }

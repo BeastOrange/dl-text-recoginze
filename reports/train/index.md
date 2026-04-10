@@ -1,6 +1,6 @@
 # Training Report Index
 
-- Directory: `/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/reports/train`
+- Directory: `/root/autodl-tmp/dl-text-recoginze/reports/train`
 
 ## OCR Mainline
 

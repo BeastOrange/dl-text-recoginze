@@ -21,6 +21,7 @@ from dltr.models.recognition.trainer import _import_torch
 from dltr.post_ocr.classification import analyze_scene_text
 from dltr.post_ocr.slots import PostOCRSlots, extract_post_ocr_slots
 from dltr.torch_checkpoint import load_torch_checkpoint
+from dltr.visualization.end_to_end_rendering import render_end_to_end_preview
 
 
 @dataclass(frozen=True)
@@ -230,7 +231,6 @@ def infer_end_to_end_image_detailed(
         min_area=min_area,
     )
     detector_latency_ms = (time.perf_counter() - detector_started_at) * 1000.0
-    preview = original.copy()
     line_results: list[EndToEndLineResult] = []
     cropped_items: list[tuple[int, object, np.ndarray]] = []
     for index, detection in enumerate(detections):
@@ -326,15 +326,10 @@ def infer_end_to_end_image_detailed(
             second_pass_confidence=second_pass_confidence,
         )
         line_results.append(result)
-        _draw_polygon(
-            preview,
-            detection.polygon,
-            f"{recognition.text[:12]} | {analysis.label}",
-        )
-
     post_ocr_latency_ms = (time.perf_counter() - post_ocr_started_at) * 1000.0
     total_latency_ms = (time.perf_counter() - total_started_at) * 1000.0
     fps = 1000.0 / total_latency_ms if total_latency_ms > 0 else 0.0
+    preview = render_end_to_end_preview(original, line_results)
     return {
         "preview": preview,
         "line_results": line_results,
@@ -368,22 +363,6 @@ def _crop_polygon(image: np.ndarray, polygon: list[int]) -> np.ndarray | None:
     )
     transform = cv2.getPerspectiveTransform(pts, destination)
     return cv2.warpPerspective(image, transform, (target_width, target_height))
-
-
-def _draw_polygon(image: np.ndarray, polygon: list[int], label: str) -> None:
-    pts = np.asarray(polygon, dtype=np.int32).reshape(-1, 2)
-    cv2.polylines(image, [pts], isClosed=True, color=(0, 180, 0), thickness=2)
-    x, y = int(pts[:, 0].min()), int(pts[:, 1].min()) - 6
-    cv2.putText(
-        image,
-        label,
-        (max(x, 0), max(y, 12)),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.45,
-        (20, 20, 220),
-        1,
-        cv2.LINE_AA,
-    )
 
 
 def _build_markdown_report(

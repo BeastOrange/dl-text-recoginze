@@ -158,3 +158,46 @@ def test_aggregate_training_runs_excludes_obsolete_smoke_runs(tmp_path: Path) ->
 
     payload = json.loads(outputs["json"].read_text(encoding="utf-8"))
     assert [item["run_name"] for item in payload] == ["20260406-120000"]
+
+
+def test_aggregate_training_runs_handles_long_labels_and_writes_nonempty_png(
+    tmp_path: Path,
+) -> None:
+    long_name = "transformer_detector_crop_cn_scene_4090_multitask_20260406_153844"
+    second_name = "recdet_20260406_201309_extremely_long_variant_name"
+    run_a = tmp_path / long_name
+    run_b = tmp_path / second_name
+    run_a.mkdir()
+    run_b.mkdir()
+    (run_a / "training_summary.json").write_text(
+        json.dumps({"metrics": {"word_accuracy": 0.73}, "best_checkpoint_path": "/tmp/a.pt"}),
+        encoding="utf-8",
+    )
+    (run_b / "training_summary.json").write_text(
+        json.dumps({"metrics": {"word_accuracy": 0.69}, "best_checkpoint_path": "/tmp/b.pt"}),
+        encoding="utf-8",
+    )
+
+    outputs = aggregate_training_runs(
+        run_dirs=[run_a, run_b],
+        output_dir=tmp_path / "summary",
+        task_name="recognition",
+        primary_metric="word_accuracy",
+    )
+
+    assert outputs["png"].exists()
+    assert outputs["png"].stat().st_size > 0
+
+
+def test_aggregate_training_runs_handles_empty_input(tmp_path: Path) -> None:
+    outputs = aggregate_training_runs(
+        run_dirs=[],
+        output_dir=tmp_path / "summary",
+        task_name="recognition",
+        primary_metric="word_accuracy",
+    )
+
+    assert outputs["png"].exists()
+    assert outputs["png"].stat().st_size > 0
+    payload = json.loads(outputs["json"].read_text(encoding="utf-8"))
+    assert payload == []

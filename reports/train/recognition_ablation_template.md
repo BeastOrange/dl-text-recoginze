@@ -5,7 +5,11 @@
 | Experiment | Hypothesis | Expected Impact | Actual Result |
 |---|---|---|---|
 | report-smoke |  |  |  |
-| taskbook-mainline |  |  |  |
+| rec4090_20260405_224834 |  |  |  |
+| rec4090-20260406-153844 |  |  |  |
+| recdet-20260406-201309 |  |  |  |
+| 4090-mainline |  |  |  |
+| rec-tonight-4090 |  |  |  |
 
 ## Notes
 

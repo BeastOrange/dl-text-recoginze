@@ -35,7 +35,7 @@ def test_metrics_validation_rejects_invalid_cer() -> None:
     metrics = RecognitionMetrics(
         samples=50,
         word_accuracy=0.8,
-        cer=1.2,
+        cer=-0.1,
         ned=0.2,
         mean_edit_distance=0.5,
     )

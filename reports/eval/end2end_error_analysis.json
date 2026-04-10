@@ -1,86 +1,56 @@
 {
   "missed_detection": [
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_003670.jpg",
-      "missed_count": 6,
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_003670.jpg",
+      "missed_count": 3,
       "missed_gt_texts": [
-        "一餐饮",
-        "中一餐饮",
-        "螺蛳粉",
         "螺中王",
-        "饼"
+        "饼",
+        "二食堂"
       ]
     },
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_009258.jpg",
-      "missed_count": 1,
-      "missed_gt_texts": [
-        "厦门特香食品"
-      ]
-    },
-    {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011859.jpg",
-      "missed_count": 10,
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011859.jpg",
+      "missed_count": 7,
       "missed_gt_texts": [
         "天天",
         "Tiantian",
         "农家土菜",
-        "天天煲仔",
-        "紫街店"
+        "外卖电话：",
+        "64480138"
       ]
     },
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_009448.jpg",
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012184.jpg",
       "missed_count": 2,
       "missed_gt_texts": [
-        "便当",
-        "优食光"
-      ]
-    },
-    {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012184.jpg",
-      "missed_count": 4,
-      "missed_gt_texts": [
-        "馋火炉魚",
         "光臨",
-        "elcome",
-        "鑪"
+        "elcome"
       ]
     },
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012576.jpg",
-      "missed_count": 11,
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012576.jpg",
+      "missed_count": 7,
       "missed_gt_texts": [
-        "朝天",
         "門",
         "CTM",
-        "中国·重庆·老字号",
-        "全国连锁"
+        "全国连锁",
+        "400-313-323",
+        "CTM"
       ]
     },
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_008599.jpg",
-      "missed_count": 6,
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_008599.jpg",
+      "missed_count": 2,
       "missed_gt_texts": [
-        "烤肉拌饭",
-        "黄",
-        "张秀梅",
-        "脆皮鸡饭",
-        "全国加盟热线："
+        "全国加盟热线：",
+        "400-9966-567"
       ]
     },
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011108.jpg",
-      "missed_count": 1,
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_014227.jpg",
+      "missed_count": 4,
       "missed_gt_texts": [
-        "谢记烧烤"
-      ]
-    },
-    {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_014227.jpg",
-      "missed_count": 5,
-      "missed_gt_texts": [
-        "猫赞",
         "MORE",
         "THAN",
         "藤椒",
@@ -88,126 +58,889 @@
       ]
     },
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011544.jpg",
-      "missed_count": 6,
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011544.jpg",
+      "missed_count": 5,
       "missed_gt_texts": [
-        "九田家",
         "黑牛烤肉料理店",
         "JIU",
         "TIAN",
-        "HOWE"
+        "HOWE",
+        "BBO"
       ]
     },
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000203.jpg",
-      "missed_count": 4,
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000203.jpg",
+      "missed_count": 2,
       "missed_gt_texts": [
         "欢迎光临",
-        "福",
-        "九大簋家宴",
-        "乙末年金秋"
+        "福"
       ]
     },
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_005149.jpg",
-      "missed_count": 4,
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_019639.jpg",
+      "missed_count": 5,
       "missed_gt_texts": [
-        "乐吃",
-        "串串锅",
-        "那一年我们经过乐山",
-        "中大店"
-      ]
-    },
-    {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_010732.jpg",
-      "missed_count": 6,
-      "missed_gt_texts": [
-        "张记",
-        "绝味笋子面",
-        "特色小炒、",
-        "盖饭、",
-        "炒饭"
-      ]
-    },
-    {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_019639.jpg",
-      "missed_count": 7,
-      "missed_gt_texts": [
-        "文叔的小館",
         "wen",
         "shu",
         "de",
-        "xiao"
+        "xiao",
+        "guan"
       ]
     },
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_001038.jpg",
-      "missed_count": 10,
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_001038.jpg",
+      "missed_count": 6,
       "missed_gt_texts": [
         "面之缘",
         "面馆",
-        "特色面",
-        "一次不吃是你的错",
-        "只吃一次是我的错"
+        "Face",
+        "of",
+        "the"
       ]
     },
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000754.jpg",
-      "missed_count": 10,
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000754.jpg",
+      "missed_count": 4,
       "missed_gt_texts": [
         "麻",
-        "麻辣英",
-        "老成都味道",
-        "特色小郡肝",
-        "麻辣牛肉"
+        "TEL：",
+        "麻辣涮串",
+        "蜀品汇"
       ]
     },
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_007221.jpg",
-      "missed_count": 5,
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_007221.jpg",
+      "missed_count": 2,
       "missed_gt_texts": [
         "137898845",
-        "锡纸",
-        "花甲粉",
-        "鲜之道",
         "电话"
       ]
     },
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_006739.jpg",
-      "missed_count": 7,
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_006739.jpg",
+      "missed_count": 4,
       "missed_gt_texts": [
-        "SMALL",
         "TOWN",
-        "COFFEE",
         "小镇咖啡",
-        "TEL:"
+        "TEL:",
+        "thing"
       ]
     },
     {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_014543.jpg",
-      "missed_count": 1,
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_001851.jpg",
+      "missed_count": 2,
       "missed_gt_texts": [
-        "粮仓码头"
-      ]
-    },
-    {
-      "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_001851.jpg",
-      "missed_count": 7,
-      "missed_gt_texts": [
-        "煮沸生活",
-        "一锅红艳",
-        "聚知己",
         "5022234",
         "订餐电话："
       ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_007998.jpg",
+      "missed_count": 6,
+      "missed_gt_texts": [
+        "鲜动力",
+        "®",
+        "X·POWER",
+        "品牌热线：",
+        "4008-330-627"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_015080.jpg",
+      "missed_count": 1,
+      "missed_gt_texts": [
+        "®"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_007915.jpg",
+      "missed_count": 1,
+      "missed_gt_texts": [
+        "小智"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_014611.jpg",
+      "missed_count": 3,
+      "missed_gt_texts": [
+        "由理发店上二楼",
+        "旋转小火锅",
+        "轩月阁"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_015949.jpg",
+      "missed_count": 2,
+      "missed_gt_texts": [
+        "涮烤主",
+        "乌鱼"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011916.jpg",
+      "missed_count": 3,
+      "missed_gt_texts": [
+        "肠粉",
+        "卤粉",
+        "热卤"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_014418.jpg",
+      "missed_count": 4,
+      "missed_gt_texts": [
+        "峰鸭头",
+        "FENGYATOU",
+        "加盟电话",
+        "15968869009"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_019548.jpg",
+      "missed_count": 6,
+      "missed_gt_texts": [
+        "®",
+        "步大叔",
+        "Uncle",
+        "老式麻辣烫",
+        "加盟电话"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000473.jpg",
+      "missed_count": 5,
+      "missed_gt_texts": [
+        "牛扒",
+        "自助餐",
+        "简餐",
+        "咖啡",
+        "饮品"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_005876.jpg",
+      "missed_count": 2,
+      "missed_gt_texts": [
+        "奶鋪",
+        "甜"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012766.jpg",
+      "missed_count": 9,
+      "missed_gt_texts": [
+        "甜品站",
+        "TOFU",
+        "PUDDING",
+        "DIARY",
+        "DESSERT"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_006222.jpg",
+      "missed_count": 5,
+      "missed_gt_texts": [
+        "家常菜馆",
+        "快餐盒饭炝拌肉肉汤饭水饺刀削面油泼面冷面凉拌面",
+        "狗",
+        "司",
+        "狗"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_010016.jpg",
+      "missed_count": 1,
+      "missed_gt_texts": [
+        "八号椒"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_002970.jpg",
+      "missed_count": 1,
+      "missed_gt_texts": [
+        "加盟"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_007179.jpg",
+      "missed_count": 4,
+      "missed_gt_texts": [
+        "恒",
+        "兼营",
+        "子果饼煎子嘴卫",
+        "津门"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_009322.jpg",
+      "missed_count": 2,
+      "missed_gt_texts": [
+        "约",
+        "定"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_013145.jpg",
+      "missed_count": 1,
+      "missed_gt_texts": [
+        "小侑宴"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_019290.jpg",
+      "missed_count": 2,
+      "missed_gt_texts": [
+        "1857817",
+        "YEFU"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_017493.jpg",
+      "missed_count": 2,
+      "missed_gt_texts": [
+        "休",
+        "啃吧"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_014930.jpg",
+      "missed_count": 1,
+      "missed_gt_texts": [
+        "餐馆"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_001700.jpg",
+      "missed_count": 6,
+      "missed_gt_texts": [
+        "DAIJINJI",
+        "Snurce",
+        "to",
+        "1758",
+        "米饭"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_016772.jpg",
+      "missed_count": 2,
+      "missed_gt_texts": [
+        "东",
+        "奇"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011407.jpg",
+      "missed_count": 1,
+      "missed_gt_texts": [
+        "皇上请选锅"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_002733.jpg",
+      "missed_count": 5,
+      "missed_gt_texts": [
+        "新",
+        "淼鑫",
+        "®",
+        "四季养胃营养配方",
+        "最高可享78"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_019584.jpg",
+      "missed_count": 4,
+      "missed_gt_texts": [
+        "粥",
+        "欢",
+        "35638",
+        "外卖"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_017462.jpg",
+      "missed_count": 3,
+      "missed_gt_texts": [
+        "真",
+        "清真",
+        "早餐供应"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_006910.jpg",
+      "missed_count": 3,
+      "missed_gt_texts": [
+        "岗上渣渣",
+        "®",
+        "重庆人的味觉乡愁"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_013106.jpg",
+      "missed_count": 1,
+      "missed_gt_texts": [
+        "TEL"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_007836.jpg",
+      "missed_count": 12,
+      "missed_gt_texts": [
+        "成都",
+        "花房",
+        "串串",
+        "音乐餐吧",
+        "本座三层"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_013938.jpg",
+      "missed_count": 3,
+      "missed_gt_texts": [
+        "我",
+        "AN",
+        "THE"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_017353.jpg",
+      "missed_count": 4,
+      "missed_gt_texts": [
+        "饮料",
+        "老店",
+        "®",
+        "老字號"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_004454.jpg",
+      "missed_count": 2,
+      "missed_gt_texts": [
+        "面皮",
+        "麻辣烫"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_007480.jpg",
+      "missed_count": 18,
+      "missed_gt_texts": [
+        "聘",
+        "小",
+        "饼价目表",
+        "鲜肉饼",
+        "2元"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_006558.jpg",
+      "missed_count": 2,
+      "missed_gt_texts": [
+        "拉条子",
+        "扯面"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_002997.jpg",
+      "missed_count": 1,
+      "missed_gt_texts": [
+        "旭"
+      ]
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_016250.jpg",
+      "missed_count": 2,
+      "missed_gt_texts": [
+        "Tea",
+        "Milk"
+      ]
     }
   ],
-  "wrong_recognition": [],
-  "correct_samples": [],
+  "wrong_recognition": [
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_003670.jpg",
+      "gt_text": "一餐饮",
+      "pred_text": "砂家·",
+      "iou": 0.9486715815829739
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_003670.jpg",
+      "gt_text": "中一餐饮",
+      "pred_text": "功一中",
+      "iou": 0.8608754208754209
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_003670.jpg",
+      "gt_text": "螺蛳粉",
+      "pred_text": "古面香",
+      "iou": 0.8518830108378285
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_009258.jpg",
+      "gt_text": "厦门特香食品",
+      "pred_text": "古子串冒飲",
+      "iou": 0.926708768961141
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011859.jpg",
+      "gt_text": "紫街店",
+      "pred_text": "砂粉",
+      "iou": 0.9523809523809523
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011859.jpg",
+      "gt_text": "天天煲仔",
+      "pred_text": "外子",
+      "iou": 0.9337198264171414
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011859.jpg",
+      "gt_text": "玲",
+      "pred_text": "味",
+      "iou": 0.8349900596421471
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_009448.jpg",
+      "gt_text": "便当",
+      "pred_text": "黑都",
+      "iou": 0.8263104177298243
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_009448.jpg",
+      "gt_text": "优食光",
+      "pred_text": "粥",
+      "iou": 0.6335756102052824
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012184.jpg",
+      "gt_text": "馋火炉魚",
+      "pred_text": "豆七馆",
+      "iou": 0.6904750337644167
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012184.jpg",
+      "gt_text": "鑪",
+      "pred_text": "家",
+      "iou": 0.6001984126984127
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012576.jpg",
+      "gt_text": "朝天門",
+      "pred_text": "串串",
+      "iou": 0.8084977849375755
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012576.jpg",
+      "gt_text": "中国·重庆·老字号",
+      "pred_text": "A",
+      "iou": 0.7891019172552977
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012576.jpg",
+      "gt_text": "火锅·沈阳·奥体店",
+      "pred_text": "饭",
+      "iou": 0.7884877384196185
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012576.jpg",
+      "gt_text": "朝天",
+      "pred_text": "八多",
+      "iou": 0.5035184199633375
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_008599.jpg",
+      "gt_text": "烤肉拌饭",
+      "pred_text": "张小排",
+      "iou": 0.9582751419649798
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_008599.jpg",
+      "gt_text": "张秀梅",
+      "pred_text": "蜀花",
+      "iou": 0.9388329544224315
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_008599.jpg",
+      "gt_text": "脆皮鸡饭",
+      "pred_text": "甜豆部",
+      "iou": 0.9336454488160619
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_008599.jpg",
+      "gt_text": "黄",
+      "pred_text": "菜",
+      "iou": 0.8828398339119189
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011108.jpg",
+      "gt_text": "谢记烧烤",
+      "pred_text": "粉生饼",
+      "iou": 0.9395134419644895
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_014227.jpg",
+      "gt_text": "猫赞",
+      "pred_text": "麻辣饼",
+      "iou": 0.5876876805194186
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_011544.jpg",
+      "gt_text": "九田家",
+      "pred_text": "辣动",
+      "iou": 0.9576116924452582
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000203.jpg",
+      "gt_text": "九大簋家宴",
+      "pred_text": "营重中子",
+      "iou": 0.8715252091547631
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000203.jpg",
+      "gt_text": "乙末年金秋",
+      "pred_text": "老",
+      "iou": 0.5565353048904564
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_005149.jpg",
+      "gt_text": "中大店",
+      "pred_text": "刘中",
+      "iou": 0.9905660377358491
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_005149.jpg",
+      "gt_text": "串串锅",
+      "pred_text": "鲜多烤",
+      "iou": 0.9130085959885387
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_005149.jpg",
+      "gt_text": "那一年我们经过乐山",
+      "pred_text": "r！",
+      "iou": 0.8849881663473459
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_005149.jpg",
+      "gt_text": "乐吃",
+      "pred_text": "回！",
+      "iou": 0.7389525368248773
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_010732.jpg",
+      "gt_text": "绝味笋子面",
+      "pred_text": "面常削品",
+      "iou": 0.8987687519188625
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_010732.jpg",
+      "gt_text": "张记",
+      "pred_text": "米记",
+      "iou": 0.8607822568559869
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_010732.jpg",
+      "gt_text": "炒饭",
+      "pred_text": "福风",
+      "iou": 0.8535779816513761
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_010732.jpg",
+      "gt_text": "盖饭、",
+      "pred_text": "小香",
+      "iou": 0.7329879101899828
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_010732.jpg",
+      "gt_text": "特色小炒、",
+      "pred_text": "小豆牛",
+      "iou": 0.7256888430018713
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_010732.jpg",
+      "gt_text": "绝味笋",
+      "pred_text": "麻辣鱼",
+      "iou": 0.6633100955331784
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_019639.jpg",
+      "gt_text": "文叔的小館",
+      "pred_text": "4吃",
+      "iou": 0.7728731942215088
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_019639.jpg",
+      "gt_text": "文叔的小館",
+      "pred_text": "秘牌味吉",
+      "iou": 0.5857223899220924
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_001038.jpg",
+      "gt_text": "只吃一次是我的错",
+      "pred_text": "店",
+      "iou": 0.9488536155202821
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_001038.jpg",
+      "gt_text": "面之",
+      "pred_text": "天岛",
+      "iou": 0.9268321653403017
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_001038.jpg",
+      "gt_text": "一次不吃是你的错",
+      "pred_text": "黑的香—",
+      "iou": 0.8964705882352941
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_001038.jpg",
+      "gt_text": "特色面",
+      "pred_text": "正菜",
+      "iou": 0.5392248642576296
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000754.jpg",
+      "gt_text": "老成都味道",
+      "pred_text": "承物淇时茶",
+      "iou": 0.9226557680444171
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000754.jpg",
+      "gt_text": "香菜牛肉",
+      "pred_text": "时线蛋",
+      "iou": 0.8971031985515993
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000754.jpg",
+      "gt_text": "麻辣英",
+      "pred_text": "烧粉",
+      "iou": 0.893464299206649
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000754.jpg",
+      "gt_text": "特色小郡肝",
+      "pred_text": "中脆（号头",
+      "iou": 0.8868112690102219
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000754.jpg",
+      "gt_text": "麻辣牛肉",
+      "pred_text": "肉牛辣线",
+      "iou": 0.8751895991332611
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000754.jpg",
+      "gt_text": "86666066",
+      "pred_text": "美道",
+      "iou": 0.5197548782454443
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_007221.jpg",
+      "gt_text": "鲜之道",
+      "pred_text": "麻之锅",
+      "iou": 0.9126099175052126
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_007221.jpg",
+      "gt_text": "锡纸",
+      "pred_text": "麻锅",
+      "iou": 0.9083247010076279
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_007221.jpg",
+      "gt_text": "花甲粉",
+      "pred_text": "辣王",
+      "iou": 0.731989270493403
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_006739.jpg",
+      "gt_text": "SMALL",
+      "pred_text": "TE",
+      "iou": 0.9305705059203444
+    }
+  ],
+  "correct_samples": [
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_002794.jpg",
+      "gt_text": "面",
+      "pred_text": "面",
+      "iou": 0.6253697531131408
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_013964.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.8641571194762684
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_001230.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.6098562628336756
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_018149.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.9047619047619048
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_003367.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.8768898488120951
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000786.jpg",
+      "gt_text": "面",
+      "pred_text": "面",
+      "iou": 0.900984682713348
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_002193.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.7757201646090535
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000077.jpg",
+      "gt_text": "排",
+      "pred_text": "排",
+      "iou": 0.7407711238720263
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_008681.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.7669565217391304
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_000880.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.7727272727272727
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_019933.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.8288
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012337.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.7
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_013419.jpg",
+      "gt_text": "中",
+      "pred_text": "中",
+      "iou": 0.7971938775510204
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_005694.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.7887667887667887
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_017709.jpg",
+      "gt_text": "906",
+      "pred_text": "906",
+      "iou": 0.7311977715877437
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_004953.jpg",
+      "gt_text": "餐",
+      "pred_text": "餐",
+      "iou": 0.5288753799392097
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_012875.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.8444444444444444
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_017858.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.8868144690781797
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_019300.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.7170868347338936
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_009793.jpg",
+      "gt_text": "品",
+      "pred_text": "品",
+      "iou": 0.9667873642152578
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_010742.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.6260162601626016
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_005165.jpg",
+      "gt_text": "中",
+      "pred_text": "中",
+      "iou": 0.8872987477638641
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_018547.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.787027027027027
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_006643.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.9011494252873563
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_014836.jpg",
+      "gt_text": "真",
+      "pred_text": "真",
+      "iou": 0.8165266106442577
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_016372.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.8158995815899581
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_014238.jpg",
+      "gt_text": "海鲜",
+      "pred_text": "海鲜",
+      "iou": 0.9070522734302505
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_017561.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.7585964912280702
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_008592.jpg",
+      "gt_text": "品",
+      "pred_text": "品",
+      "iou": 0.8284572570286856
+    },
+    {
+      "image_path": "/root/autodl-tmp/dl-text-recoginze/data/raw/rects/train/img/train_ReCTS_013791.jpg",
+      "gt_text": "®",
+      "pred_text": "®",
+      "iou": 0.78125
+    }
+  ],
   "counts": {
-    "missed_detection_images": 20,
-    "wrong_recognition_matches": 0,
-    "correct_matches": 0
+    "missed_detection_images": 1436,
+    "wrong_recognition_matches": 5518,
+    "correct_matches": 45
   }
 }

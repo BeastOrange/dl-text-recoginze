@@ -119,11 +119,14 @@ def test_run_end_to_end_pipeline_applies_real_second_pass(monkeypatch, tmp_path:
     )
 
     payload = json.loads(artifacts.json_path.read_text(encoding="utf-8"))
+    preview = cv2.imread(str(artifacts.preview_image_path))
     assert len(calls) == 2
     assert payload["lines"][0]["text"] == "营业时间"
     assert payload["lines"][0]["second_pass_applied"] is True
     assert payload["runtime_metrics"]["total_latency_ms"] >= 0.0
     assert payload["runtime_metrics"]["fps"] >= 0.0
+    assert preview is not None
+    assert preview.shape[1] > image.shape[1]
 
 
 def test_run_end_to_end_pipeline_accepts_reused_sessions(monkeypatch, tmp_path: Path) -> None:
