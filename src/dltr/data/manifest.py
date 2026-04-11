@@ -4,6 +4,10 @@ import json
 import os
 from pathlib import Path
 
+from dltr.data.english_recognition_sources import (
+    collect_iiit5k_mat_records,
+    collect_svt_xml_records,
+)
 from dltr.data.types import ManifestBuildResult
 
 
@@ -50,6 +54,19 @@ def build_recognition_manifest(
             dataset_name=dataset_name,
             dataset_root=source_root,
             annotation_path=annotation_path,
+        )
+    elif resolved_format == "iiit5k_mat":
+        scanned_images, rows, skipped_without_label = _build_iiit5k_mat_rows(
+            dataset_name=dataset_name,
+            dataset_root=source_root,
+            annotation_path=annotation_path,
+        )
+    elif resolved_format == "svt_xml":
+        scanned_images, rows, skipped_without_label = _build_svt_xml_rows(
+            dataset_name=dataset_name,
+            dataset_root=source_root,
+            annotation_path=annotation_path,
+            crop_output_dir=output_path.parent / f"{dataset_name}_crops",
         )
     else:
         scanned_images, rows, skipped_without_label = _build_sidecar_rows(
@@ -194,6 +211,56 @@ def _build_icdar_gt_rows(
             }
         )
     return scanned_images, rows, skipped_without_label
+
+
+def _build_iiit5k_mat_rows(
+    *,
+    dataset_name: str,
+    dataset_root: Path,
+    annotation_path: Path | None,
+) -> tuple[int, list[dict[str, str]], int]:
+    if annotation_path is None or not annotation_path.exists():
+        return 0, [], 0
+    records = collect_iiit5k_mat_records(
+        dataset_root=dataset_root,
+        annotation_path=annotation_path,
+    )
+    rows = [
+        {
+            "dataset": dataset_name,
+            "image_path": record.image_path.as_posix(),
+            "label_path": record.label_path.as_posix() if record.label_path else "",
+            "text": record.text,
+        }
+        for record in records
+    ]
+    return len(rows), rows, 0
+
+
+def _build_svt_xml_rows(
+    *,
+    dataset_name: str,
+    dataset_root: Path,
+    annotation_path: Path | None,
+    crop_output_dir: Path,
+) -> tuple[int, list[dict[str, str]], int]:
+    if annotation_path is None or not annotation_path.exists():
+        return 0, [], 0
+    records = collect_svt_xml_records(
+        dataset_root=dataset_root,
+        annotation_path=annotation_path,
+        crop_output_dir=crop_output_dir,
+    )
+    rows = [
+        {
+            "dataset": dataset_name,
+            "image_path": record.image_path.as_posix(),
+            "label_path": record.label_path.as_posix() if record.label_path else "",
+            "text": record.text,
+        }
+        for record in records
+    ]
+    return len(rows), rows, 0
 
 
 def _extract_mjsynth_text(image_path: Path) -> str:

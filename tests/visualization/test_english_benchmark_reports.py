@@ -37,6 +37,8 @@ def test_build_english_benchmark_summary_writes_main_and_hard_kpis(tmp_path) -> 
 
     assert payload["summary"]["main_average_word_accuracy"] == 0.9
     assert payload["summary"]["hard_average_word_accuracy"] == 0.73
+    assert outputs["png"].exists()
+    assert outputs["png"].stat().st_size > 0
     assert "Main-English-Accuracy" in content
     assert "Hard-English-Accuracy" in content
 
@@ -59,3 +61,4 @@ def test_build_english_benchmark_summary_handles_missing_hard_records(tmp_path) 
 
     assert payload["summary"]["main_average_word_accuracy"] == 0.92
     assert payload["summary"]["hard_average_word_accuracy"] is None
+    assert outputs["png"].exists()

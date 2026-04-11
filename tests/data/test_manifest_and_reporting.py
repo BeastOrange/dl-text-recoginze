@@ -218,3 +218,49 @@ def test_build_recognition_manifest_supports_icdar_gt_annotations(tmp_path: Path
     assert result.emitted_rows == 1
     payload = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
     assert payload["text"] == "OpenAI"
+
+
+def test_build_recognition_manifest_supports_svt_xml_annotations(tmp_path: Path) -> None:
+    import cv2
+    import numpy as np
+
+    dataset_root = tmp_path / "svt1"
+    image_path = dataset_root / "img" / "demo.jpg"
+    annotation_path = dataset_root / "train.xml"
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    dataset_root.mkdir(parents=True, exist_ok=True)
+
+    image = np.full((80, 160, 3), 255, dtype=np.uint8)
+    cv2.rectangle(image, (20, 20), (90, 50), (0, 0, 0), -1)
+    cv2.imwrite(str(image_path), image)
+    annotation_path.write_text(
+        """
+<tagset>
+  <image>
+    <imageName>img/demo.jpg</imageName>
+    <taggedRectangles>
+      <taggedRectangle x="20" y="20" width="70" height="30">
+        <tag>STORE</tag>
+      </taggedRectangle>
+    </taggedRectangles>
+  </image>
+</tagset>
+""".strip(),
+        encoding="utf-8",
+    )
+
+    output_path = tmp_path / "svt_manifest.jsonl"
+    result = build_recognition_manifest(
+        dataset_name="svt",
+        dataset_root=dataset_root,
+        output_path=output_path,
+        image_extensions={".jpg"},
+        label_extensions=set(),
+        manifest_format="svt_xml",
+        annotation_path=annotation_path,
+    )
+
+    assert result.emitted_rows == 1
+    payload = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert payload["text"] == "STORE"
+    assert Path(payload["image_path"]).exists()

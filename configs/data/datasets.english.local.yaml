@@ -1,0 +1,15 @@
+datasets:
+  - name: iiit5k_test
+    relative_path: data/IIIT5K
+    required: false
+    manifest_format: iiit5k_mat
+    annotation_path: data/IIIT5K/testdata.mat
+    image_extensions: [".png", ".jpg", ".jpeg"]
+    label_extensions: []
+  - name: svt_train
+    relative_path: data/svt1
+    required: false
+    manifest_format: svt_xml
+    annotation_path: data/svt1/train.xml
+    image_extensions: [".jpg", ".jpeg", ".png"]
+    label_extensions: []

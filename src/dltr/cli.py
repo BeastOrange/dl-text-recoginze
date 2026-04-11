@@ -15,6 +15,7 @@ from dltr.commands import (
     cmd_evaluate_detector,
     cmd_evaluate_end2end,
     cmd_evaluate_recognizer,
+    cmd_evaluate_recognizer_benchmark,
     cmd_export_onnx,
     cmd_report_build_ablation_overview,
     cmd_report_build_ablation_template,
@@ -143,6 +144,18 @@ def build_parser() -> argparse.ArgumentParser:
     eval_recognizer.add_argument("--benchmark-category")
     eval_recognizer.add_argument("--output-dir")
     eval_recognizer.set_defaults(handler=cmd_evaluate_recognizer)
+    eval_recognizer_benchmark = eval_sub.add_parser("recognizer-benchmark")
+    eval_recognizer_benchmark.add_argument("--run-name", required=True)
+    eval_recognizer_benchmark.add_argument("--model-name", required=True)
+    eval_recognizer_benchmark.add_argument("--backend", default="easyocr")
+    eval_recognizer_benchmark.add_argument("--manifest", required=True)
+    eval_recognizer_benchmark.add_argument("--benchmark-name")
+    eval_recognizer_benchmark.add_argument("--benchmark-category")
+    eval_recognizer_benchmark.add_argument("--device", default="auto")
+    eval_recognizer_benchmark.add_argument("--normalize", default="none")
+    eval_recognizer_benchmark.add_argument("--max-samples", type=int)
+    eval_recognizer_benchmark.add_argument("--output-dir")
+    eval_recognizer_benchmark.set_defaults(handler=cmd_evaluate_recognizer_benchmark)
     eval_end2end = eval_sub.add_parser("end2end")
     eval_end2end.add_argument("--text")
     eval_end2end.add_argument("--confidence", type=float)

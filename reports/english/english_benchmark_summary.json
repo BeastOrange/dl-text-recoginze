@@ -1,0 +1,34 @@
+{
+  "summary": {
+    "main_average_word_accuracy": 0.9214708171206225,
+    "hard_average_word_accuracy": null,
+    "main_benchmark_count": 2,
+    "hard_benchmark_count": 0
+  },
+  "benchmarks": [
+    {
+      "benchmark": "iiit5k",
+      "category": "main",
+      "word_accuracy": 0.948,
+      "samples": 3000,
+      "cer": 0.014801231252865282,
+      "ned": 0.017280146705146705,
+      "mean_edit_distance": 0.07533333333333334,
+      "run_name": "paddleocr_iiit5k_alnum",
+      "model_name": "paddleocr_ppocrv5_server_rec",
+      "source_json": "/root/autodl-tmp/dl-text-recoginze/reports/eval/paddleocr_iiit5k_alnum_recognition_eval.json"
+    },
+    {
+      "benchmark": "svt",
+      "category": "main",
+      "word_accuracy": 0.8949416342412452,
+      "samples": 257,
+      "cer": 0.032564450474898234,
+      "ned": 0.031758384287567165,
+      "mean_edit_distance": 0.1867704280155642,
+      "run_name": "paddleocr_svt_alnum",
+      "model_name": "paddleocr_ppocrv5_server_rec",
+      "source_json": "/root/autodl-tmp/dl-text-recoginze/reports/eval/paddleocr_svt_alnum_recognition_eval.json"
+    }
+  ]
+}

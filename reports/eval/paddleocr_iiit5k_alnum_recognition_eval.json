@@ -1,0 +1,16 @@
+{
+  "run_name": "paddleocr_iiit5k_alnum",
+  "model_name": "paddleocr_ppocrv5_server_rec",
+  "benchmark_name": "iiit5k",
+  "benchmark_category": "main",
+  "notes": "Pretrained benchmark backend: paddleocr; normalize=alnum_upper",
+  "generated_at": "2026-04-11T06:04:47.272121+00:00",
+  "metrics": {
+    "samples": 3000,
+    "word_accuracy": 0.948,
+    "cer": 0.014801231252865282,
+    "ned": 0.017280146705146705,
+    "mean_edit_distance": 0.07533333333333334,
+    "latency_ms": 18.373620618134737
+  }
+}

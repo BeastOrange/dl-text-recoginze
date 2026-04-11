@@ -1,0 +1,16 @@
+{
+  "run_name": "paddleocr_svt_alnum",
+  "model_name": "paddleocr_ppocrv5_server_rec",
+  "benchmark_name": "svt",
+  "benchmark_category": "main",
+  "notes": "Pretrained benchmark backend: paddleocr; normalize=alnum_upper",
+  "generated_at": "2026-04-11T06:06:38.709596+00:00",
+  "metrics": {
+    "samples": 257,
+    "word_accuracy": 0.8949416342412452,
+    "cer": 0.032564450474898234,
+    "ned": 0.031758384287567165,
+    "mean_edit_distance": 0.1867704280155642,
+    "latency_ms": 19.198516934588262
+  }
+}

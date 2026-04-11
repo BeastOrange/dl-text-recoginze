@@ -18,6 +18,8 @@ data/raw/
 data/interim/
 data/processed/
 data/semantic/
+data/IIIT5K/
+data/svt1/
 
 artifacts/checkpoints/
 artifacts/detection/

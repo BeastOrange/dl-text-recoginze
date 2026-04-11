@@ -180,9 +180,12 @@ def _train_ctc_recognizer(
     model = model_builder(nn=nn, vocabulary_size=vocabulary.size).to(device)
     criterion = nn.CTCLoss(blank=vocabulary.blank_index, zero_infinity=True)
     optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
+    scheduler = _build_lr_scheduler(optim=optim, optimizer=optimizer, config=config)
     scaler = _build_grad_scaler(torch, use_amp=runtime.use_amp)
     history: list[dict[str, float | int]] = list(resume_state.history) if resume_state else []
     best_word_accuracy = resume_state.best_word_accuracy if resume_state else float("-inf")
+    best_monitor = _initial_monitor_value(config.monitor_metric)
+    epochs_without_improvement = 0
     metrics = RecognitionMetrics(
         samples=1,
         word_accuracy=0.0,
@@ -287,6 +290,7 @@ def _train_ctc_recognizer(
                 "val_ned": metrics.ned,
                 "val_mean_edit_distance": metrics.mean_edit_distance,
                 "val_latency_ms": metrics.latency_ms or 0.0,
+                "learning_rate": float(optimizer.param_groups[0]["lr"]),
             }
         )
         if metrics.word_accuracy >= best_word_accuracy:
@@ -302,15 +306,40 @@ def _train_ctc_recognizer(
                 },
                 best_checkpoint_path,
             )
+        monitor_value = _resolve_monitor_value(metrics, config.monitor_metric)
+        if _is_monitor_improved(
+            current=monitor_value,
+            best=best_monitor,
+            monitor_metric=config.monitor_metric,
+            min_delta=config.early_stopping_min_delta,
+        ):
+            best_monitor = monitor_value
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+        if scheduler is not None:
+            scheduler.step(monitor_value)
         print(
             "识别训练轮次完成："
             f"epoch={epoch}/{config.epochs} "
             f"train_loss={train_loss:.4f} "
             f"val_word_accuracy={metrics.word_accuracy:.4f} "
             f"val_cer={metrics.cer:.4f} "
-            f"val_ned={metrics.ned:.4f}",
+            f"val_ned={metrics.ned:.4f} "
+            f"lr={optimizer.param_groups[0]['lr']:.6f}",
             flush=True,
         )
+        if (
+            config.early_stopping_patience is not None
+            and epochs_without_improvement >= config.early_stopping_patience
+        ):
+            print(
+                "识别训练提前停止："
+                f"monitor={config.monitor_metric} "
+                f"patience={config.early_stopping_patience}",
+                flush=True,
+            )
+            break
     report_path = generate_recognition_evaluation_report(
         run_name=config.experiment_name,
         model_name=config.model_name,
@@ -688,13 +717,59 @@ def _build_history_markdown(
     lines = [
         f"# Training History: {experiment_name}",
         "",
-        "| Epoch | Train Loss | Val Word Accuracy | Val CER | Val NED |",
-        "|---|---:|---:|---:|---:|",
+        "| Epoch | Train Loss | Val Word Accuracy | Val CER | Val NED | Learning Rate |",
+        "|---|---:|---:|---:|---:|---:|",
     ]
     for record in history:
         lines.append(
             f"| {record['epoch']} | {record['train_loss']:.6f} | "
             f"{record['val_word_accuracy']:.6f} | {record['val_cer']:.6f} | "
-            f"{record['val_ned']:.6f} |"
+            f"{record['val_ned']:.6f} | {record.get('learning_rate', 0.0):.6f} |"
         )
     return "\n".join(lines) + "\n"
+
+
+def _build_lr_scheduler(
+    *,
+    optim: Any,
+    optimizer: Any,
+    config: RecognitionExperimentConfig,
+) -> Any | None:
+    if config.lr_scheduler_patience is None:
+        return None
+    mode = "max" if config.monitor_metric == "word_accuracy" else "min"
+    return optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        mode=mode,
+        patience=config.lr_scheduler_patience,
+        factor=config.lr_scheduler_factor,
+        min_lr=config.min_learning_rate,
+    )
+
+
+def _resolve_monitor_value(metrics: RecognitionMetrics, monitor_metric: str) -> float:
+    if monitor_metric == "word_accuracy":
+        return metrics.word_accuracy
+    if monitor_metric == "cer":
+        return metrics.cer
+    if monitor_metric == "ned":
+        return metrics.ned
+    raise ValueError(f"Unsupported monitor metric: {monitor_metric}")
+
+
+def _initial_monitor_value(monitor_metric: str) -> float:
+    if monitor_metric == "word_accuracy":
+        return float("-inf")
+    return float("inf")
+
+
+def _is_monitor_improved(
+    *,
+    current: float,
+    best: float,
+    monitor_metric: str,
+    min_delta: float,
+) -> bool:
+    if monitor_metric == "word_accuracy":
+        return current > (best + min_delta)
+    return current < (best - min_delta)

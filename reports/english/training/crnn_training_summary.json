@@ -1,0 +1,17 @@
+{
+  "run_id": "english-iiit-train-svt-train-crnn-20260411-130802",
+  "checkpoint_path": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/crnn_english_iiit_svt_train/english-iiit-train-svt-train-crnn-20260411-130802/last.pt",
+  "best_checkpoint_path": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/crnn_english_iiit_svt_train/english-iiit-train-svt-train-crnn-20260411-130802/best.pt",
+  "history_path": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/crnn_english_iiit_svt_train/english-iiit-train-svt-train-crnn-20260411-130802/training_history.jsonl",
+  "history_plot_path": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/crnn_english_iiit_svt_train/english-iiit-train-svt-train-crnn-20260411-130802/crnn_english_iiit_svt_train_training_curve.png",
+  "report_path": "/root/autodl-tmp/dl-text-recoginze/artifacts/checkpoints/recognition/crnn_english_iiit_svt_train/english-iiit-train-svt-train-crnn-20260411-130802/crnn_english_iiit_svt_train_recognition_eval.md",
+  "metrics": {
+    "samples": 225,
+    "word_accuracy": 0.0,
+    "cer": 0.9477477477477477,
+    "ned": 0.9468823236542534,
+    "mean_edit_distance": 4.6755555555555555,
+    "latency_ms": 0.3571660816669464
+  },
+  "epoch": 60
+}

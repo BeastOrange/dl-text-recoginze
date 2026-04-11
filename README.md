@@ -168,6 +168,19 @@ uv run python scripts/run_dltr.py report summarize-english-benchmark \
   --output-dir reports/english
 ```
 
+## 预训练英文 Benchmark 评测
+
+```bash
+uv run --with easyocr python scripts/run_dltr.py evaluate recognizer-benchmark \
+  --run-name easyocr_iiit5k \
+  --model-name easyocr_en \
+  --backend easyocr \
+  --manifest data/processed/iiit5k_benchmark_manifest.jsonl \
+  --benchmark-name iiit5k \
+  --benchmark-category main \
+  --output-dir reports/eval
+```
+
 ## 测试与代码检查
 
 ```bash

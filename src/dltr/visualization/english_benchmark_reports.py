@@ -4,6 +4,16 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+
+from dltr.visualization.plot_style import (
+    bar_colors,
+    resolve_label_rotation,
+    resolve_summary_fig_width,
+    resolve_upper_bound,
+    style_axis,
+)
+
 
 @dataclass(frozen=True)
 class BenchmarkRecord:
@@ -44,9 +54,11 @@ def build_english_benchmark_summary(
     }
     json_path = output_dir / f"{report_name}.json"
     markdown_path = output_dir / f"{report_name}.md"
+    png_path = output_dir / f"{report_name}.png"
     json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    markdown_path.write_text(_build_markdown(payload), encoding="utf-8")
-    return {"json": json_path, "markdown": markdown_path}
+    markdown_path.write_text(_build_markdown(payload, png_name=png_path.name), encoding="utf-8")
+    _render_benchmark_plot(records=resolved_records, png_path=png_path)
+    return {"json": json_path, "markdown": markdown_path, "png": png_path}
 
 
 def _resolve_records(
@@ -97,7 +109,7 @@ def _record_to_dict(record: BenchmarkRecord) -> dict[str, object]:
     }
 
 
-def _build_markdown(payload: dict[str, object]) -> str:
+def _build_markdown(payload: dict[str, object], *, png_name: str) -> str:
     summary = payload["summary"]
     records = payload["benchmarks"]
     lines = [
@@ -105,6 +117,7 @@ def _build_markdown(payload: dict[str, object]) -> str:
         "",
         f"- Main-English-Accuracy: `{_format_metric(summary['main_average_word_accuracy'])}`",
         f"- Hard-English-Accuracy: `{_format_metric(summary['hard_average_word_accuracy'])}`",
+        f"- Plot: `{png_name}`",
         "",
         "| Benchmark | Category | Word Accuracy | Samples | CER | NED |",
         "|---|---|---:|---:|---:|---:|",
@@ -122,3 +135,47 @@ def _format_metric(value: float | None) -> str:
     if value is None:
         return "N/A"
     return f"{value:.6f}"
+
+
+def _render_benchmark_plot(*, records: list[BenchmarkRecord], png_path: Path) -> None:
+    fig_width = resolve_summary_fig_width([item.benchmark for item in records])
+    fig, ax = plt.subplots(figsize=(fig_width, 5.2))
+    style_axis(ax)
+    if records:
+        labels = [item.benchmark for item in records]
+        values = [item.word_accuracy for item in records]
+        x_positions = list(range(len(records)))
+        rotation = resolve_label_rotation(labels)
+        bars = ax.bar(
+            x_positions,
+            values,
+            color=bar_colors(len(records), cmap_name="Greens"),
+            width=0.62,
+            edgecolor="#2E3A46",
+            linewidth=0.6,
+        )
+        upper_bound = resolve_upper_bound(max(values))
+        ax.set_ylim(0.0, upper_bound)
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(labels, rotation=rotation, ha="right" if rotation else "center")
+        ax.set_ylabel("Word Accuracy")
+        ax.set_title("English Benchmark Accuracy")
+        for bar, value, record in zip(bars, values, records, strict=True):
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                value + upper_bound * 0.015,
+                f"{value:.3f}",
+                ha="center",
+                va="bottom",
+                fontsize=8.5,
+                color="#2E3A46",
+            )
+            if record.category == "hard":
+                bar.set_hatch("//")
+    else:
+        ax.text(0.5, 0.5, "No benchmark records", ha="center", va="center", transform=ax.transAxes)
+        ax.set_xticks([])
+        ax.set_yticks([])
+    fig.tight_layout()
+    fig.savefig(png_path, dpi=180)
+    plt.close(fig)

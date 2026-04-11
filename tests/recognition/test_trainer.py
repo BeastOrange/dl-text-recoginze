@@ -5,6 +5,7 @@ import pytest
 from PIL import Image, ImageDraw
 
 from dltr.models.recognition.config import load_recognition_config
+from dltr.models.recognition.metrics import RecognitionScoreSummary
 from dltr.models.recognition.trainer import (
     _build_runtime_optimizations,
     train_crnn_recognizer,
@@ -260,6 +261,86 @@ def test_build_runtime_optimizations_keeps_cpu_path_minimal() -> None:
     assert "prefetch_factor" not in runtime.loader_kwargs
 
 
+def test_train_transformer_recognizer_stops_early_when_metric_stagnates(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config = _build_recognition_smoke_config(
+        tmp_path,
+        model_name="transformer",
+        experiment_name="transformer_early_stop",
+        epochs=5,
+    )
+    config = _with_overrides(
+        config,
+        early_stopping_patience=1,
+        early_stopping_min_delta=0.0,
+        monitor_metric="word_accuracy",
+    )
+    summaries = iter(
+        [
+            RecognitionScoreSummary(2, 0.5, 0.1, 0.1, 0.2),
+            RecognitionScoreSummary(2, 0.4, 0.2, 0.2, 0.3),
+            RecognitionScoreSummary(2, 0.4, 0.2, 0.2, 0.3),
+        ]
+    )
+    monkeypatch.setattr(
+        "dltr.models.recognition.trainer.compute_recognition_scores",
+        lambda *_args, **_kwargs: next(summaries),
+    )
+
+    result = train_transformer_recognizer(
+        config,
+        paths=ProjectPaths.from_root(tmp_path),
+        run_id="early-stop",
+    )
+
+    history = [
+        json.loads(line)
+        for line in result.history_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(history) == 2
+    assert history[-1]["epoch"] == 2
+
+
+def test_train_transformer_recognizer_reduces_learning_rate_on_plateau(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config = _build_recognition_smoke_config(
+        tmp_path,
+        model_name="transformer",
+        experiment_name="transformer_scheduler",
+        epochs=3,
+    )
+    config = _with_overrides(
+        config,
+        early_stopping_patience=None,
+        monitor_metric="cer",
+        lr_scheduler_patience=0,
+        lr_scheduler_factor=0.1,
+        min_learning_rate=1e-6,
+    )
+    monkeypatch.setattr(
+        "dltr.models.recognition.trainer.compute_recognition_scores",
+        lambda *_args, **_kwargs: RecognitionScoreSummary(2, 0.1, 0.5, 0.5, 0.5),
+    )
+
+    result = train_transformer_recognizer(
+        config,
+        paths=ProjectPaths.from_root(tmp_path),
+        run_id="scheduler",
+    )
+
+    history = [
+        json.loads(line)
+        for line in result.history_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(history) == 3
+    assert history[0]["learning_rate"] == pytest.approx(0.001)
+    assert history[-1]["learning_rate"] < history[0]["learning_rate"]
+
+
 def _write_text_image(path: Path, text: str) -> None:
     image = Image.new("L", (128, 32), color=255)
     draw = ImageDraw.Draw(image)
@@ -338,3 +419,8 @@ def _build_recognition_smoke_config(
         encoding="utf-8",
     )
     return load_recognition_config(config_path)
+
+
+def _with_overrides(config, **overrides):  # noqa: ANN001, ANN202
+    payload = config.__dict__ | overrides
+    return type(config)(**payload)

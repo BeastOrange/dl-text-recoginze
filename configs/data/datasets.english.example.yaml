@@ -8,15 +8,15 @@ datasets:
   - name: iiit5k
     relative_path: data/raw/iiit5k
     required: false
-    manifest_format: pairs
-    annotation_path: data/raw/iiit5k/annotations/test.tsv
+    manifest_format: iiit5k_mat
+    annotation_path: data/raw/iiit5k/testdata.mat
     image_extensions: [".jpg", ".jpeg", ".png"]
     label_extensions: []
   - name: svt
     relative_path: data/raw/svt
     required: false
-    manifest_format: pairs
-    annotation_path: data/raw/svt/annotations/test.tsv
+    manifest_format: svt_xml
+    annotation_path: data/raw/svt/train.xml
     image_extensions: [".jpg", ".jpeg", ".png"]
     label_extensions: []
   - name: icdar13

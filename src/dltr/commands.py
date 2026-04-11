@@ -45,6 +45,9 @@ from dltr.models.recognition.evaluation import (
     RecognitionMetrics,
     write_recognition_evaluation_bundle,
 )
+from dltr.models.recognition.pretrained_benchmark import (
+    evaluate_recognition_manifest_with_backend,
+)
 from dltr.models.recognition.refinement import (
     QualitySignals,
     second_pass_reasons,
@@ -843,6 +846,29 @@ def cmd_evaluate_recognizer(args: argparse.Namespace) -> int:
         benchmark_category=args.benchmark_category,
     )
     print(f"Recognition evaluation report written to {outputs['markdown']}")
+    print(f"json={outputs['json']}")
+    return 0
+
+
+def cmd_evaluate_recognizer_benchmark(args: argparse.Namespace) -> int:
+    result = evaluate_recognition_manifest_with_backend(
+        manifest_path=_resolve_existing_path_arg(args.manifest),
+        backend_name=args.backend,
+        device=args.device,
+        max_samples=args.max_samples,
+        normalize_mode=args.normalize,
+    )
+    output_dir = _resolve_output_path(args.output_dir, ProjectPaths.from_root().reports / "eval")
+    outputs = write_recognition_evaluation_bundle(
+        run_name=args.run_name,
+        model_name=args.model_name,
+        metrics=result.metrics,
+        output_dir=output_dir,
+        notes=f"Pretrained benchmark backend: {args.backend}; normalize={args.normalize}",
+        benchmark_name=args.benchmark_name,
+        benchmark_category=args.benchmark_category,
+    )
+    print(f"Recognition benchmark report written to {outputs['markdown']}")
     print(f"json={outputs['json']}")
     return 0
 

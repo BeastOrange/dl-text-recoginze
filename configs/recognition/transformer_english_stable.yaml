@@ -1,0 +1,32 @@
+experiment_name: transformer_english_stable
+model_name: transformer
+dataset_manifest: data/processed/english_recognition_train_splits/train.jsonl
+validation_manifest: data/processed/english_recognition_train_splits/val.jsonl
+charset_file: data/processed/charset_en_train.txt
+output_dir: artifacts/checkpoints/recognition/transformer_english_stable
+epochs: 40
+batch_size: 64
+image_height: 48
+image_width: 320
+learning_rate: 0.0005
+monitor_metric: cer
+lr_scheduler_patience: 2
+lr_scheduler_factor: 0.5
+min_learning_rate: 0.00001
+early_stopping_patience: 5
+early_stopping_min_delta: 0.0005
+device: auto
+num_workers: 8
+preprocess:
+  preserve_aspect_ratio: true
+  rotate_vertical_text: false
+  vertical_aspect_threshold: 1.2
+  padding_value: 255
+second_pass:
+  enabled: false
+  confidence_threshold: 0.78
+  max_blur_score: 0.45
+  min_contrast_score: 0.35
+  min_text_length: 2
+  min_aspect_ratio: 0.2
+  max_aspect_ratio: 20.0
