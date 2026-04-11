@@ -7,6 +7,8 @@ import numpy as np
 from dltr.pipeline.end_to_end import (
     EndToEndLineResult,
     EndToEndPipelineArtifacts,
+    _crop_polygon,
+    _polygon_to_quad,
     run_end_to_end_pipeline,
 )
 from dltr.post_ocr.slots import extract_post_ocr_slots
@@ -200,3 +202,26 @@ def test_run_end_to_end_pipeline_supports_unified_session(tmp_path: Path) -> Non
 
     assert artifacts.line_results[0].text == "营业时间"
     assert artifacts.runtime_metrics["fps"] == 100.0
+
+
+def test_polygon_to_quad_orders_points_consistently() -> None:
+    unordered = [100, 60, 20, 60, 20, 20, 100, 20]
+    quad = _polygon_to_quad(unordered)
+    expected = np.asarray([[20, 20], [100, 20], [100, 60], [20, 60]], dtype=np.float32)
+    assert np.allclose(quad, expected)
+
+
+def test_crop_polygon_is_invariant_to_quad_order() -> None:
+    image = np.zeros((90, 140, 3), dtype=np.uint8)
+    cv2.rectangle(image, (20, 20), (100, 60), (250, 180, 80), thickness=-1)
+    cv2.circle(image, (35, 35), 6, (20, 20, 20), thickness=-1)
+
+    ordered = [20, 20, 100, 20, 100, 60, 20, 60]
+    unordered = [100, 60, 20, 60, 20, 20, 100, 20]
+    crop_a = _crop_polygon(image, ordered)
+    crop_b = _crop_polygon(image, unordered)
+
+    assert crop_a is not None and crop_b is not None
+    assert crop_a.shape == crop_b.shape
+    diff = np.abs(crop_a.astype(np.int16) - crop_b.astype(np.int16))
+    assert float(diff.mean()) < 1.0

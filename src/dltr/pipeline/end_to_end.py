@@ -432,6 +432,19 @@ def _load_second_pass_policy(recognizer_checkpoint: Path) -> SecondPassConfig:
 def _polygon_to_quad(polygon: list[int]) -> np.ndarray:
     pts = np.asarray(polygon, dtype=np.float32).reshape(-1, 2)
     if len(polygon) == 8:
-        return pts
+        return _order_quad_points(pts)
     rect = cv2.minAreaRect(pts)
-    return cv2.boxPoints(rect).astype(np.float32)
+    return _order_quad_points(cv2.boxPoints(rect).astype(np.float32))
+
+
+def _order_quad_points(points: np.ndarray) -> np.ndarray:
+    if points.shape != (4, 2):
+        raise ValueError(f"Expected quad points shape (4, 2), got {points.shape}")
+    sums = points.sum(axis=1)
+    diffs = np.diff(points, axis=1).reshape(-1)
+    ordered = np.zeros((4, 2), dtype=np.float32)
+    ordered[0] = points[np.argmin(sums)]  # top-left
+    ordered[2] = points[np.argmax(sums)]  # bottom-right
+    ordered[1] = points[np.argmin(diffs)]  # top-right
+    ordered[3] = points[np.argmax(diffs)]  # bottom-left
+    return ordered

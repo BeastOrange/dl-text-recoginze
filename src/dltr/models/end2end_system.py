@@ -1034,9 +1034,9 @@ def _polygon_points(points: list[int]) -> np.ndarray:
 def _polygon_to_quad(points: list[int]) -> np.ndarray:
     pts = _polygon_points(points)
     if len(points) == 8:
-        return pts
+        return _order_quad_points(pts)
     rect = cv2.minAreaRect(pts.astype(np.float32))
-    return cv2.boxPoints(rect).astype(np.float32)
+    return _order_quad_points(cv2.boxPoints(rect).astype(np.float32))
 
 
 def _crop_polygon(image: np.ndarray, polygon: list[int]) -> np.ndarray | None:
@@ -1060,6 +1060,19 @@ def _crop_polygon(image: np.ndarray, polygon: list[int]) -> np.ndarray | None:
     return cv2.warpPerspective(image, transform, (target_width, target_height))
 
 
+def _order_quad_points(points: np.ndarray) -> np.ndarray:
+    if points.shape != (4, 2):
+        raise ValueError(f"Expected quad points shape (4, 2), got {points.shape}")
+    sums = points.sum(axis=1)
+    diffs = np.diff(points, axis=1).reshape(-1)
+    ordered = np.zeros((4, 2), dtype=np.float32)
+    ordered[0] = points[np.argmin(sums)]  # top-left
+    ordered[2] = points[np.argmax(sums)]  # bottom-right
+    ordered[1] = points[np.argmin(diffs)]  # top-right
+    ordered[3] = points[np.argmax(diffs)]  # bottom-left
+    return ordered
+
+
 def _estimate_quality_signals(crop: np.ndarray) -> QualitySignals:
     gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY) if crop.ndim == 3 else crop
     laplacian_var = float(cv2.Laplacian(gray, cv2.CV_32F).var())
@@ -1078,4 +1091,3 @@ def _apply_second_pass_enhancement(crop: np.ndarray) -> np.ndarray:
     equalized = cv2.equalizeHist(gray)
     blurred = cv2.GaussianBlur(equalized, (0, 0), sigmaX=1.2)
     return cv2.addWeighted(equalized, 1.6, blurred, -0.6, 0.0)
-
