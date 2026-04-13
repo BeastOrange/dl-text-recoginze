@@ -20,7 +20,7 @@ def render_eda_markdown(
     lines.append("")
     lines.append("## Dataset Matrix")
     lines.append("")
-    lines.append("| Dataset | Required | Exists | Under data/raw | Images | Labels | Label Ratio |")
+    lines.append("| Dataset | Required | Exists | Under data/ | Images | Labels | Label Ratio |")
     lines.append("|---|---:|---:|---:|---:|---:|---:|")
 
     validation_lookup = {item.name: item for item in validation.dataset_results}
@@ -36,7 +36,7 @@ def render_eda_markdown(
             label_count = inventory.total_labels
             ratio = inventory.label_presence_ratio
         lines.append(
-            f"| {spec.name} | {result.required} | {result.exists} | {result.within_data_raw} | "
+            f"| {spec.name} | {result.required} | {result.exists} | {result.within_data_dir} | "
             f"{image_count} | {label_count} | {ratio:.3f} |"
         )
 

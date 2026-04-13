@@ -192,7 +192,7 @@ def build_parser() -> argparse.ArgumentParser:
     export_onnx.add_argument("--run-id")
     export_onnx.set_defaults(handler=cmd_export_onnx)
 
-    demo = top.add_parser("demo", help="Run the English demo app.")
+    demo = top.add_parser("demo", help="Run the post-OCR demo app.")
     demo.add_argument("--text", default="营业时间 09:00-21:00 电话 13800138000")
     demo.add_argument("--source-id", default="demo-001")
     demo.add_argument("--analysis-label")

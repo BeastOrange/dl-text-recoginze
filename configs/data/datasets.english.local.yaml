@@ -1,3 +1,4 @@
+# 当前仓库本地 benchmark 布局，兼容直接放在 data/ 下的已解压数据。
 datasets:
   - name: iiit5k_test
     relative_path: data/IIIT5K

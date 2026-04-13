@@ -20,7 +20,33 @@ def test_validate_dataset_paths_reports_missing_required(tmp_path: Path) -> None
     assert "ctr_benchmark_scene_lmdb" in missing_required_names
 
 
-def test_validate_dataset_paths_flags_outside_data_raw(tmp_path: Path) -> None:
+def test_validate_dataset_paths_accepts_dataset_under_data_root(tmp_path: Path) -> None:
+    (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
+    paths = ProjectPaths.from_root(tmp_path)
+    dataset_root = tmp_path / "data" / "IIIT5K"
+    dataset_root.mkdir(parents=True, exist_ok=True)
+
+    config_path = tmp_path / "datasets.yaml"
+    config_path.write_text(
+        """
+datasets:
+  - name: iiit5k_test
+    relative_path: data/IIIT5K
+    required: true
+""".strip(),
+        encoding="utf-8",
+    )
+    from dltr.data.config import load_data_config
+
+    config = load_data_config(config_path)
+    summary = validate_dataset_paths(paths, config)
+
+    assert summary.ok is True
+    assert not summary.invalid_locations
+    assert summary.dataset_results[0].within_data_dir is True
+
+
+def test_validate_dataset_paths_flags_outside_data_root(tmp_path: Path) -> None:
     (tmp_path / "PLAN.md").write_text("plan", encoding="utf-8")
     paths = ProjectPaths.from_root(tmp_path)
     outside = tmp_path / "outside_dataset"

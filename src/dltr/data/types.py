@@ -29,9 +29,14 @@ class DatasetValidationResult:
     configured_path: Path
     resolved_path: Path
     required: bool
-    within_data_raw: bool
+    within_data_dir: bool
     exists: bool
     issues: list[str]
+
+    @property
+    def within_data_raw(self) -> bool:
+        """Backward-compatible alias for older reports/tests."""
+        return self.within_data_dir
 
 
 @dataclass(frozen=True)
@@ -44,7 +49,7 @@ class ValidationSummary:
 
     @property
     def invalid_locations(self) -> list[DatasetValidationResult]:
-        return [item for item in self.dataset_results if not item.within_data_raw]
+        return [item for item in self.dataset_results if not item.within_data_dir]
 
     @property
     def ok(self) -> bool:

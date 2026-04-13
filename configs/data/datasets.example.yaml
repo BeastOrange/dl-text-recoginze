@@ -1,3 +1,4 @@
+# 标准中文场景数据布局，推荐将原始下载内容放在 data/raw/ 下。
 datasets:
   - name: rctw17
     relative_path: data/raw/rctw17

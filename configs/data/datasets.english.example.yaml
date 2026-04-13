@@ -1,3 +1,4 @@
+# 标准英文 benchmark 布局，推荐将原始下载内容放在 data/raw/ 下。
 datasets:
   - name: mjsynth
     relative_path: data/raw/mjsynth
