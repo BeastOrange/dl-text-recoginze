@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw
 from dltr.models.recognition.config import load_recognition_config
 from dltr.models.recognition.metrics import RecognitionScoreSummary
 from dltr.models.recognition.trainer import (
+    _apply_ctc_blank_bias,
     _build_runtime_optimizations,
     train_crnn_recognizer,
     train_transformer_recognizer,
@@ -95,6 +96,8 @@ def test_train_crnn_recognizer_runs_smoke_epoch(tmp_path: Path) -> None:
     assert result.history_plot_path.exists()
     assert result.summary_path.exists()
     assert result.report_path.exists()
+    assert (result.run_dir / "training_diagnostics.json").exists()
+    assert (result.run_dir / "training_diagnostics.md").exists()
     assert result.metrics.samples == 2
     history_lines = result.history_path.read_text(encoding="utf-8").splitlines()
     assert len(history_lines) == 1
@@ -180,6 +183,8 @@ def test_train_transformer_recognizer_runs_smoke_epoch(tmp_path: Path) -> None:
     assert result.history_plot_path.exists()
     assert result.summary_path.exists()
     assert result.report_path.exists()
+    assert (result.run_dir / "training_diagnostics.json").exists()
+    assert (result.run_dir / "training_diagnostics.md").exists()
     assert result.metrics.samples == 2
 
 
@@ -261,6 +266,22 @@ def test_build_runtime_optimizations_keeps_cpu_path_minimal() -> None:
     assert "prefetch_factor" not in runtime.loader_kwargs
 
 
+def test_apply_ctc_blank_bias_updates_classifier_bias() -> None:
+    class _Model:
+        def __init__(self) -> None:
+            self.classifier = torch.nn.Linear(4, 3)
+
+    model = _Model()
+    before = float(model.classifier.bias[0].item())
+    before_other = float(model.classifier.bias[1].item())
+
+    _apply_ctc_blank_bias(model=model, blank_index=0, blank_bias=-2.5)
+
+    assert float(model.classifier.bias[0].item()) == pytest.approx(-2.5)
+    assert float(model.classifier.bias[1].item()) == pytest.approx(before_other)
+    assert before != float(model.classifier.bias[0].item())
+
+
 def test_train_transformer_recognizer_stops_early_when_metric_stagnates(
     tmp_path: Path,
     monkeypatch,
@@ -339,6 +360,30 @@ def test_train_transformer_recognizer_reduces_learning_rate_on_plateau(
     assert len(history) == 3
     assert history[0]["learning_rate"] == pytest.approx(0.001)
     assert history[-1]["learning_rate"] < history[0]["learning_rate"]
+
+
+def test_train_transformer_recognizer_fails_when_oov_ratio_too_high(tmp_path: Path) -> None:
+    config = _build_recognition_smoke_config(
+        tmp_path,
+        model_name="transformer",
+        experiment_name="transformer_oov_guard",
+    )
+    config = _with_overrides(config, max_oov_ratio=0.0)
+
+    train_manifest = tmp_path / "data" / "processed" / "recognition_splits" / "train.jsonl"
+    rows = [json.loads(line) for line in train_manifest.read_text(encoding="utf-8").splitlines()]
+    rows[0]["text"] = f"{rows[0]['text']}X"
+    train_manifest.write_text(
+        "\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="OOV ratio is too high"):
+        train_transformer_recognizer(
+            config,
+            paths=ProjectPaths.from_root(tmp_path),
+            run_id="oov-guard",
+        )
 
 
 def _write_text_image(path: Path, text: str) -> None:

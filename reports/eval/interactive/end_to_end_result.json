@@ -1,0 +1,38 @@
+{
+  "image_path": "/Users/orange/Desktop/OTHER/graduation_project/dl-text-recoginze/reports/demo_assets/uploads/tmpjw2u3ls7.png",
+  "engine": "PaddleOCR PP-OCRv5",
+  "lines": [
+    {
+      "line_id": "line-0",
+      "polygon": [
+        0,
+        7,
+        113,
+        0,
+        114,
+        39,
+        0,
+        47
+      ],
+      "text": "DOLC",
+      "recognition_confidence": 0.9944019913673401,
+      "analysis_label": "other",
+      "analysis_confidence": 0.55,
+      "slots": {
+        "phone": [],
+        "price": [],
+        "time": [],
+        "warning_terms": [],
+        "location_hint": [],
+        "keywords": [
+          "DOLC"
+        ]
+      }
+    }
+  ],
+  "runtime_metrics": {
+    "total_latency_ms": 1701.776959002018,
+    "ocr_latency_ms": 392.8086250089109,
+    "fps": 0.5876210714396058
+  }
+}

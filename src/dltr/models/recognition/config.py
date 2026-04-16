@@ -49,12 +49,15 @@ class RecognitionExperimentConfig:
     image_height: int
     image_width: int
     learning_rate: float
+    ctc_blank_bias: float = 0.0
     monitor_metric: str = "word_accuracy"
     lr_scheduler_patience: int | None = None
     lr_scheduler_factor: float = 0.5
     min_learning_rate: float = 1e-5
     early_stopping_patience: int | None = None
     early_stopping_min_delta: float = 0.0
+    max_oov_ratio: float | None = None
+    diagnostics_top_k: int = 20
     second_pass: SecondPassConfig = field(default_factory=SecondPassConfig)
     preprocess: RecognitionPreprocessConfig | None = None
     device: str = "auto"
@@ -83,6 +86,8 @@ class RecognitionExperimentConfig:
             raise ValueError("image_height and image_width must be > 0")
         if self.learning_rate <= 0:
             raise ValueError("learning_rate must be > 0")
+        if not -20.0 <= self.ctc_blank_bias <= 20.0:
+            raise ValueError("ctc_blank_bias must be in [-20, 20]")
         if self.monitor_metric not in {"word_accuracy", "cer", "ned"}:
             raise ValueError("monitor_metric must be one of {'word_accuracy', 'cer', 'ned'}")
         if self.lr_scheduler_patience is not None and self.lr_scheduler_patience < 0:
@@ -95,6 +100,10 @@ class RecognitionExperimentConfig:
             raise ValueError("early_stopping_patience must be >= 0 when provided")
         if self.early_stopping_min_delta < 0:
             raise ValueError("early_stopping_min_delta must be >= 0")
+        if self.max_oov_ratio is not None and not 0.0 <= self.max_oov_ratio <= 1.0:
+            raise ValueError("max_oov_ratio must be in [0, 1] when provided")
+        if self.diagnostics_top_k <= 0:
+            raise ValueError("diagnostics_top_k must be > 0")
         self.second_pass.validate()
         if self.preprocess is None:
             raise ValueError("preprocess must be configured")
@@ -137,6 +146,7 @@ class RecognitionExperimentConfig:
             image_height=image_height,
             image_width=image_width,
             learning_rate=float(payload.get("learning_rate", 0.0)),
+            ctc_blank_bias=float(payload.get("ctc_blank_bias", 0.0)),
             monitor_metric=str(payload.get("monitor_metric", "word_accuracy")).strip(),
             lr_scheduler_patience=(
                 int(payload["lr_scheduler_patience"])
@@ -151,6 +161,12 @@ class RecognitionExperimentConfig:
                 else None
             ),
             early_stopping_min_delta=float(payload.get("early_stopping_min_delta", 0.0)),
+            max_oov_ratio=(
+                float(payload["max_oov_ratio"])
+                if payload.get("max_oov_ratio") is not None
+                else None
+            ),
+            diagnostics_top_k=int(payload.get("diagnostics_top_k", 20)),
             device=str(payload.get("device", "auto")).strip() or "auto",
             num_workers=int(payload.get("num_workers", 0)),
             second_pass=second_pass,

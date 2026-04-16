@@ -171,6 +171,28 @@ def test_build_recognition_manifest_supports_mjsynth_filename_labels(tmp_path: P
     assert payload["text"] == "Street"
 
 
+def test_mjsynth_manifest_parses_synthtext_style_stems(tmp_path: Path) -> None:
+    """SynthText 词片常为 word_100_0.jpg；标签应在首段（可含 +），而非中间的数字。"""
+    dataset_root = tmp_path / "SynthText"
+    image_path = dataset_root / "1" / "ant+hill_100_0.jpg"
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    image_path.write_bytes(b"img")
+
+    output_path = tmp_path / "synthtext_manifest.jsonl"
+    result = build_recognition_manifest(
+        dataset_name="synthtext",
+        dataset_root=dataset_root,
+        output_path=output_path,
+        image_extensions={".jpg"},
+        label_extensions=set(),
+        manifest_format="mjsynth",
+    )
+
+    assert result.emitted_rows == 1
+    payload = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert payload["text"] == "ant+hill"
+
+
 def test_build_recognition_manifest_supports_pairs_annotations(tmp_path: Path) -> None:
     dataset_root = tmp_path / "iiit5k"
     image_path = dataset_root / "test" / "word_001.png"

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from dltr.demo.runtime import resolve_demo_checkpoints, run_uploaded_inference
+from dltr.demo.runtime import run_paddleocr_e2e_inference
 from dltr.visualization.report_index import is_mainline_report_path
 
 
@@ -48,8 +48,8 @@ def render_streamlit_app() -> None:
         page_icon="OCR",
         layout="wide",
     )
-    st.title("中文场景文本检测与识别演示系统")
-    st.caption("在一个界面中查看检测、识别、OCR 后规则理解扩展与实验报告。")
+    st.title("场景文本检测与识别演示系统")
+    st.caption("基于 PaddleOCR PP-OCRv5 端到端推理，同时展示检测、识别与 OCR 后结构化分析结果。")
 
     left, right = st.columns((1.2, 1))
 
@@ -59,16 +59,15 @@ def render_streamlit_app() -> None:
         if uploaded is not None:
             if st.button("运行 OCR 流水线", type="primary"):
                 try:
-                    checkpoints = resolve_demo_checkpoints(project_root=root)
-                    artifacts = run_uploaded_inference(
+                    artifacts = run_paddleocr_e2e_inference(
                         image_bytes=uploaded.getvalue(),
                         project_root=root,
-                        detector_checkpoint=checkpoints["detector"],
-                        recognizer_checkpoint=checkpoints["recognizer"],
                     )
-                    st.success("端到端推理完成。")
+                    st.success("端到端推理完成（PaddleOCR PP-OCRv5 English）。")
                     st.image(str(artifacts.preview_image_path), caption="推理结果预览")
                     st.json(load_end_to_end_preview(artifacts.json_path))
+                except RuntimeError as exc:
+                    st.error(str(exc))
                 except FileNotFoundError as exc:
                     st.error(str(exc))
 

@@ -1,5 +1,12 @@
 # 当前仓库本地 benchmark 布局，兼容直接放在 data/ 下的已解压数据。
 datasets:
+  - name: iiit5k_train
+    relative_path: data/IIIT5K
+    required: false
+    manifest_format: iiit5k_mat
+    annotation_path: data/IIIT5K/traindata.mat
+    image_extensions: [".png", ".jpg", ".jpeg"]
+    label_extensions: []
   - name: iiit5k_test
     relative_path: data/IIIT5K
     required: false

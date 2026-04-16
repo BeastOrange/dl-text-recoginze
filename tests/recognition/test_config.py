@@ -19,6 +19,7 @@ def test_load_recognition_config_valid(tmp_path: Path) -> None:
         "image_height": 48,
         "image_width": 320,
         "learning_rate": 0.001,
+        "ctc_blank_bias": -2.0,
         "second_pass": {
             "enabled": True,
             "confidence_threshold": 0.8,
@@ -42,6 +43,7 @@ def test_load_recognition_config_valid(tmp_path: Path) -> None:
 
     assert config.model_name == "transformer"
     assert config.validation_manifest == "data/processed/val.jsonl"
+    assert config.ctc_blank_bias == pytest.approx(-2.0)
     assert config.second_pass.enabled is True
     assert config.second_pass.confidence_threshold == pytest.approx(0.8)
     assert config.preprocess.preserve_aspect_ratio is True
@@ -136,6 +138,8 @@ def test_load_recognition_config_reads_stability_fields(tmp_path: Path) -> None:
         "min_learning_rate": 1e-5,
         "early_stopping_patience": 4,
         "early_stopping_min_delta": 0.001,
+        "max_oov_ratio": 0.05,
+        "diagnostics_top_k": 10,
         "preprocess": {
             "preserve_aspect_ratio": True,
             "rotate_vertical_text": False,
@@ -154,3 +158,5 @@ def test_load_recognition_config_reads_stability_fields(tmp_path: Path) -> None:
     assert config.min_learning_rate == pytest.approx(1e-5)
     assert config.early_stopping_patience == 4
     assert config.early_stopping_min_delta == pytest.approx(0.001)
+    assert config.max_oov_ratio == pytest.approx(0.05)
+    assert config.diagnostics_top_k == 10

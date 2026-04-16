@@ -1,10 +1,10 @@
-experiment_name: transformer_english_stable
+experiment_name: transformer_english_warmup_iiit
 model_name: transformer
-dataset_manifest: data/processed/english_recognition_train_splits/train.jsonl
-validation_manifest: data/processed/english_recognition_train_splits/val.jsonl
-charset_file: data/processed/charset_en_train.txt
-output_dir: artifacts/checkpoints/recognition/transformer_english_stable
-epochs: 40
+dataset_manifest: data/processed/english_recognition_iiit_train_splits/train.jsonl
+validation_manifest: data/processed/english_recognition_iiit_train_splits/val.jsonl
+charset_file: data/processed/charset_en_iiit_train.txt
+output_dir: artifacts/checkpoints/recognition/transformer_english_warmup_iiit
+epochs: 20
 batch_size: 64
 image_height: 48
 image_width: 320

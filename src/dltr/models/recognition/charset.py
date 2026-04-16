@@ -32,6 +32,18 @@ class CharacterVocabulary:
         index_map = {character: index + 1 for index, character in enumerate(self.characters)}
         return [index_map[character] for character in text if character in index_map]
 
+    def encode_with_oov_count(self, text: str) -> tuple[list[int], int]:
+        index_map = {character: index + 1 for index, character in enumerate(self.characters)}
+        encoded: list[int] = []
+        oov_count = 0
+        for character in text:
+            index = index_map.get(character)
+            if index is None:
+                oov_count += 1
+                continue
+            encoded.append(index)
+        return encoded, oov_count
+
     def decode(self, indices: list[int]) -> str:
         decoded: list[str] = []
         for index in indices:

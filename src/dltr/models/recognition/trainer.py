@@ -18,6 +18,10 @@ from dltr.models.recognition.dataset import (
     RecognitionSample,
     load_recognition_samples,
 )
+from dltr.models.recognition.diagnostics import (
+    build_training_diagnostics,
+    write_training_diagnostics,
+)
 from dltr.models.recognition.evaluation import (
     RecognitionMetrics,
     generate_recognition_evaluation_report,
@@ -140,6 +144,33 @@ def _train_ctc_recognizer(
     best_checkpoint_path = run_dir / "best.pt"
     history_path = run_dir / "training_history.jsonl"
     history_markdown_path = run_dir / "training_history.md"
+    diagnostics_paths: dict[str, Path] | None = None
+
+    diagnostics = build_training_diagnostics(
+        train_samples=train_samples,
+        val_samples=val_samples,
+        vocabulary=vocabulary,
+        charset_path=charset_path,
+        top_k=config.diagnostics_top_k,
+    )
+    diagnostics_paths = write_training_diagnostics(diagnostics, output_dir=run_dir)
+    print(
+        "识别训练数据诊断："
+        f"train_samples={diagnostics.train.sample_count} "
+        f"val_samples={diagnostics.validation.sample_count} "
+        f"train_oov_ratio={diagnostics.train.oov_char_ratio:.6f} "
+        f"val_oov_ratio={diagnostics.validation.oov_char_ratio:.6f}",
+        flush=True,
+    )
+    if (
+        config.max_oov_ratio is not None
+        and diagnostics.train.oov_char_ratio > config.max_oov_ratio
+    ):
+        raise ValueError(
+            "Training manifest OOV ratio is too high: "
+            f"{diagnostics.train.oov_char_ratio:.6f} > {config.max_oov_ratio:.6f}. "
+            "Please regenerate charset or clean labels."
+        )
 
     train_dataset = _TorchRecognitionDataset(
         train_samples,
@@ -178,6 +209,11 @@ def _train_ctc_recognizer(
     runtime = _build_runtime_optimizations(device=device, num_workers=config.num_workers)
     _configure_cuda_backend(torch, device=device)
     model = model_builder(nn=nn, vocabulary_size=vocabulary.size).to(device)
+    _apply_ctc_blank_bias(
+        model=model,
+        blank_index=vocabulary.blank_index,
+        blank_bias=config.ctc_blank_bias,
+    )
     criterion = nn.CTCLoss(blank=vocabulary.blank_index, zero_infinity=True)
     optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
     scheduler = _build_lr_scheduler(optim=optim, optimizer=optimizer, config=config)
@@ -380,6 +416,12 @@ def _train_ctc_recognizer(
                 "best_checkpoint_path": str(best_checkpoint_path),
                 "history_path": str(history_path),
                 "history_plot_path": str(history_plot_paths["png"]),
+                "diagnostics_json_path": (
+                    str(diagnostics_paths["json"]) if diagnostics_paths else ""
+                ),
+                "diagnostics_markdown_path": (
+                    str(diagnostics_paths["markdown"]) if diagnostics_paths else ""
+                ),
                 "report_path": str(report_path),
                 "metrics": asdict(metrics),
                 "epoch": history[-1]["epoch"] if history else 0,
@@ -727,6 +769,19 @@ def _build_history_markdown(
             f"{record['val_ned']:.6f} | {record.get('learning_rate', 0.0):.6f} |"
         )
     return "\n".join(lines) + "\n"
+
+
+def _apply_ctc_blank_bias(*, model: Any, blank_index: int, blank_bias: float) -> None:
+    if blank_bias == 0.0:
+        return
+    classifier = getattr(model, "classifier", None)
+    if classifier is None or getattr(classifier, "bias", None) is None:
+        return
+    # CTC is prone to blank collapse on small corpora.
+    # Lowering the blank logit at init encourages non-blank exploration.
+    if blank_index < 0 or blank_index >= int(classifier.bias.numel()):
+        return
+    classifier.bias.data[blank_index] = float(blank_bias)
 
 
 def _build_lr_scheduler(

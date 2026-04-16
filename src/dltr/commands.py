@@ -1217,6 +1217,8 @@ def _write_recognition_train_plan(
         "image_height": config.image_height,
         "image_width": config.image_width,
         "learning_rate": config.learning_rate,
+        "max_oov_ratio": config.max_oov_ratio,
+        "diagnostics_top_k": config.diagnostics_top_k,
         "second_pass": asdict(config.second_pass),
         "generated_at": datetime.now(UTC).isoformat(),
     }
@@ -1234,6 +1236,8 @@ def _write_recognition_train_plan(
                 f"- Epochs: `{config.epochs}`",
                 f"- Batch Size: `{config.batch_size}`",
                 f"- Learning Rate: `{config.learning_rate}`",
+                f"- Max OOV Ratio: `{config.max_oov_ratio}`",
+                f"- Diagnostics Top-K: `{config.diagnostics_top_k}`",
                 f"- Second Pass Enabled: `{config.second_pass.enabled}`",
                 f"- Confidence Threshold: `{config.second_pass.confidence_threshold}`",
             ]

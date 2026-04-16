@@ -57,6 +57,12 @@ where = ["src"]
 
 [tool.uv]
 config-settings = { editable_mode = "compat" }
+# 默认使用清华 PyPI 镜像，便于仅国内网络可达的训练机（AutoDL 等）直接 `uv sync`。
+# 若在境外需官方源：UV_DEFAULT_INDEX=https://pypi.org/simple uv sync
+[[tool.uv.index]]
+name = "tsinghua"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

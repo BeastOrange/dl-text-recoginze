@@ -1,0 +1,9 @@
+# AutoDL：SynthText 解压为 data/SynthText/SynthText/<shard>/*.jpg 时使用。
+# 标签从文件名解析（manifest_format: mjsynth，与 MJSynth 规则一致）。
+datasets:
+  - name: synthtext
+    relative_path: data/SynthText/SynthText
+    required: false
+    manifest_format: mjsynth
+    image_extensions: [".jpg", ".jpeg", ".png"]
+    label_extensions: []

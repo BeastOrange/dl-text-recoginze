@@ -7,6 +7,7 @@ from pathlib import Path
 from dltr.data.english_recognition_sources import (
     collect_iiit5k_mat_records,
     collect_svt_xml_records,
+    parse_mjsynth_label_from_stem,
 )
 from dltr.data.types import ManifestBuildResult
 
@@ -264,10 +265,9 @@ def _build_svt_xml_rows(
 
 
 def _extract_mjsynth_text(image_path: Path) -> str:
-    parts = image_path.stem.split("_")
-    if len(parts) < 3:
-        return ""
-    return parts[1].strip()
+    # 与 `parse_mjsynth_label_from_stem` 对齐：兼容 MJSynth（12_word_34）与 SynthText 词片
+    # （如 ant+hill_100_0：倒数两段为数字 hash/序号，标签为前面整段）。
+    return parse_mjsynth_label_from_stem(image_path.stem)
 
 
 def _find_label_path(
